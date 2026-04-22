@@ -2,7 +2,6 @@ using System.Text;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
-using UnityEngine.Rendering.Universal;
 using Starter.Core;
 using Starter.Runtime;
 
@@ -22,6 +21,7 @@ namespace Starter.UI
         Camera _mainCamera;
         Camera _uiCamera;
         int _sortOrder;
+        bool _initialized;
 
         public Camera MainCamera => _mainCamera;
         public Camera UICamera   => _uiCamera;
@@ -30,6 +30,8 @@ namespace Starter.UI
 
         public void Init()
         {
+            if (_initialized) return;
+            _initialized = true;
             // 优先从 Resources 加载 UIRoot 预制体，否则代码创建
             var rootGo = ResManager.InstantiateGameObjectSync("UI/UIRoot") ?? CreateUIRoot();
             Object.DontDestroyOnLoad(rootGo);
@@ -45,22 +47,11 @@ namespace Starter.UI
             _sortOrder = 0;
         }
 
-        void OnSceneLoaded(Scene scene, LoadSceneMode mode) => SetupURPStack();
+        void OnSceneLoaded(Scene scene, LoadSceneMode mode) => _mainCamera = Camera.main;
 
         void SetupURPStack()
         {
             _mainCamera = Camera.main;
-            if (_mainCamera == null || _uiCamera == null) return;
-            try
-            {
-                var mainData = _mainCamera.GetUniversalAdditionalCameraData();
-                if (!mainData.cameraStack.Contains(_uiCamera))
-                    mainData.cameraStack.Add(_uiCamera);
-            }
-            catch
-            {
-                // 非 URP 项目跳过相机叠加设置
-            }
         }
 
         // ── Push / Pop ─────────────────────────────────────────────────────────
@@ -154,7 +145,6 @@ namespace Starter.UI
             if (canvas == null) return;
             _sortOrder += 10;
             canvas.sortingOrder = _sortOrder;
-            if (_uiCamera != null) canvas.worldCamera = _uiCamera;
         }
 
         // 从 Resources 加载 CanvasPanel 模板，否则代码创建
@@ -166,7 +156,7 @@ namespace Starter.UI
 
             var root = new GameObject("CanvasPanel");
             var canvas = root.AddComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceCamera;
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
 
             var scaler = root.AddComponent<CanvasScaler>();
             scaler.uiScaleMode          = CanvasScaler.ScaleMode.ScaleWithScreenSize;
@@ -199,12 +189,6 @@ namespace Starter.UI
             cam.cullingMask  = LayerMask.GetMask("UI");
             cam.orthographic = false;
             cam.depth        = 100f;
-            try
-            {
-                var data = cam.GetUniversalAdditionalCameraData();
-                data.renderType = CameraRenderType.Overlay;
-            }
-            catch { /* 非 URP 项目跳过 */ }
             return cam;
         }
     }

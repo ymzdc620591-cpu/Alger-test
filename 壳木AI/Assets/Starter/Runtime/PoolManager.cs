@@ -24,7 +24,7 @@ namespace Starter.Runtime
             public string     Name { get; set; }
         }
 
-        static readonly Dictionary<string, ObjectPool<GameObject>> _pools = new();
+        static readonly Dictionary<string, UnityEngine.Pool.ObjectPool<GameObject>> _pools = new();
         static UnityEngine.Pool.ObjectPool<GameObject> _emptyGOPool;
         static Transform _poolRoot;
 
