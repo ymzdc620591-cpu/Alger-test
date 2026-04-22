@@ -1,0 +1,49 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 6
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_Name: dungeon01water_fall_in
+  m_Shader: {fileID: 4800000, guid: cab1df4c0e7da0841ba04dac759e3f3d, type: 3}
+  m_ShaderKeywords: _FLOWTYPE_AUTO
+  m_LightmapFlags: 0
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: 2000
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+      _main:
+        m_Texture: {fileID: 2800000, guid: eb5aaa726fdf34748aa9ee3257ad5679, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+      _niuqu:
+        m_Texture: {fileID: 2800000, guid: 2adaf500c02a9d74a85f602f68cb53bb, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+      _node_6088:
+        m_Texture: {fileID: 2800000, guid: b59e6513fcf7f0c4facbb30907efd9de, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+      _wave1:
+        m_Texture: {fileID: 2800000, guid: e832f5a387f80ac4cb4eaba62e825116, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+      _wave2:
+        m_Texture: {fileID: 2800000, guid: 2d9a1f7f238aa704eb48e1c5d2b975cf, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Floats:
+      _Cutoff: 0.5
+      _blue_speed: 1.26
+      _green_speed: 0.2813658
+      _main: 0
+      _niuqu_speed: 1.93
+      _red_speed: 0.79
+    m_Colors:
+      _node_7599: {r: 0.04584775, g: 0.3897059, b: 0.048219167, a: 1}
