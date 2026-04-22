@@ -1,4 +1,5 @@
 using UnityEngine;
+using Starter.UI;
 
 namespace Starter.Bootstrap
 {
@@ -13,9 +14,10 @@ namespace Starter.Bootstrap
             SceneLoader.Instance.Load(_firstScene);
         }
 
-        // 按序初始化需要提前启动的系统（存档、数据加载等）
+        // 按序初始化系统，顺序不可随意调整
         void InitializeSystems()
         {
+            UIManager.Inst.Init();
             Debug.Log("[Bootstrap] Systems initialized.");
         }
     }
