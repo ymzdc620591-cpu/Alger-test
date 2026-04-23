@@ -9,7 +9,9 @@ namespace Game.Portia
         void Start()
         {
             UIManager.Inst.Init();
-            GameManager.Instance?.StartGame();
+            UIManager.Inst.PushPanel("UI/MainMenuPresetPanel");
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible   = true;
         }
     }
 }

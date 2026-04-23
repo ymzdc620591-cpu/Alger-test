@@ -5,20 +5,19 @@ namespace Game.Portia
     public class PortiaCamera : MonoBehaviour
     {
         [SerializeField] Transform _target;
-        [SerializeField] float _distance     = 5f;
-        [SerializeField] float _minPitch     = -15f;
-        [SerializeField] float _maxPitch     =  60f;
-        [SerializeField] float _sensitivityX =   3f;
-        [SerializeField] float _sensitivityY =   2f;
+        [SerializeField] float _distance     = 12f;
+        [SerializeField] float _minPitch     = 20f;
+        [SerializeField] float _maxPitch     = 75f;
+        [SerializeField] float _sensitivityX =  3f;
+        [SerializeField] float _sensitivityY =  2f;
         [SerializeField] float _heightOffset = 1.4f;
 
         float _yaw;
-        float _pitch = 20f;
+        float _pitch = 45f;
 
         void Start()
         {
-            Cursor.lockState = CursorLockMode.Locked;
-            Cursor.visible   = false;
+            // 鼠标状态由游戏流程（Bootstrap / MainMenu）统一管理，相机不在此处抢占
         }
 
         void LateUpdate()

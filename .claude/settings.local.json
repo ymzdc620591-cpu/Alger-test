@@ -8,7 +8,9 @@
       "Read(//tmp/**)",
       "Bash(git push *)",
       "Bash(curl -m 10 -Is https://github.com)",
-      "Bash(xargs -d '\\\\n' git add)"
+      "Bash(xargs -d '\\\\n' git add)",
+      "Bash(grep -E \"\\\\.cs$\")",
+      "Bash(grep -n \"--- !u!1102\" '/d/project/Alger-test/壳木AI/Assets/gamemodules/animation/animator/Anim_Tall_Man.controller')"
     ]
   }
 }

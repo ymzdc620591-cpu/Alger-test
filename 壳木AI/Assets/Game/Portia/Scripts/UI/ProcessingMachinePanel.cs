@@ -1,3 +1,4 @@
+using System.Text;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -67,9 +68,18 @@ namespace Game.Portia
             vlg.childForceExpandHeight = false;
             vlg.childControlHeight     = false;
 
-            foreach (var r in recipes)
+            if (recipes != null && recipes.Length > 0)
             {
-                if (r != null) AddRecipeRow(list, r);
+                foreach (var r in recipes)
+                {
+                    if (r != null) AddRecipeRow(list, r);
+                }
+            }
+            else
+            {
+                var t = MakeText(list, "NoRecipe", "该机器暂无可用配方", 16,
+                    new Vector2(0f, 0.3f), new Vector2(1f, 0.7f),
+                    new Color(1f, 1f, 1f, 0.45f));
             }
 
             // 关闭提示
@@ -79,8 +89,13 @@ namespace Game.Portia
 
         void AddRecipeRow(RectTransform parent, RecipeData recipe)
         {
-            var inv      = InventoryManager.Instance;
-            bool canCraft = inv != null && inv.GetCount(recipe.inputGid) >= recipe.inputCount;
+            var inv = InventoryManager.Instance;
+
+            // 检查所有输入材料是否充足
+            bool canCraft = inv != null && recipe.inputs != null && recipe.inputs.Length > 0;
+            if (canCraft)
+                foreach (var inp in recipe.inputs)
+                    if (inv.GetCount(inp.gid) < inp.count) { canCraft = false; break; }
 
             var rowGo   = new GameObject($"Row_{recipe.recipeName}");
             rowGo.transform.SetParent(parent, false);
@@ -92,11 +107,21 @@ namespace Game.Portia
                 ? new Color(0.12f, 0.22f, 0.14f, 0.9f)
                 : new Color(0.22f, 0.12f, 0.12f, 0.6f);
 
-            string inputName  = InventoryManager.GetItemName(recipe.inputGid);
+            // 拼接输入材料文字
+            var sb = new StringBuilder();
+            if (recipe.inputs != null)
+            {
+                for (int i = 0; i < recipe.inputs.Length; i++)
+                {
+                    if (i > 0) sb.Append(" + ");
+                    string iName = InventoryManager.GetItemName(recipe.inputs[i].gid);
+                    int    have  = inv?.GetCount(recipe.inputs[i].gid) ?? 0;
+                    sb.Append($"{iName} ×{recipe.inputs[i].count}");
+                    if (!canCraft) sb.Append($"[{have}]");
+                }
+            }
             string outputName = InventoryManager.GetItemName(recipe.outputGid);
-            int    have       = inv?.GetCount(recipe.inputGid) ?? 0;
-            string label      = $"{inputName} ×{recipe.inputCount}  →  {outputName} ×{recipe.outputCount}   ({recipe.processTime}s)";
-            if (!canCraft) label += $"   [库存 {have}/{recipe.inputCount}]";
+            string label = $"{sb}  →  {outputName} ×{recipe.outputCount}   ({recipe.processTime}s)";
 
             var t   = MakeTextInRect(rowGo.transform, "Label", label, 15,
                 new Vector2(0.02f, 0.1f), new Vector2(canCraft ? 0.73f : 0.98f, 0.9f));

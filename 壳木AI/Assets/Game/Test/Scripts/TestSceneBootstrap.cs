@@ -1,16 +1,19 @@
-using UnityEngine;
+using Game.System;
 using Starter.Core;
 using Starter.UI;
-using Game.System;
+using UnityEngine;
 
 namespace Game.Test
 {
     public class TestSceneBootstrap : MonoBehaviour
     {
-        [SerializeField, Tooltip("场景中的玩家对象（开始前隐藏，点击开始后激活）")]
+        [SerializeField, Tooltip("Panel resource path opened on scene start")]
+        string _startPanelRes = "UI/MainMenuPresetPanel";
+
+        [SerializeField, Tooltip("Player object kept hidden until gameplay starts")]
         GameObject _playerGo;
 
-        [SerializeField, Tooltip("玩家出生点，高于地面使其自由落体（留空则用 (0,5,0)）")]
+        [SerializeField, Tooltip("Optional spawn point, defaults to (0,5,0)")]
         Transform _spawnPoint;
 
         void Start()
@@ -20,7 +23,7 @@ namespace Game.Test
 
             UIManager.Inst.Init();
             EventBus.On<GameStateChangedEvent>(OnGameStateChanged);
-            UIManager.Inst.PushPanel("UI/TestStartPanel");
+            UIManager.Inst.PushPanel(_startPanelRes);
         }
 
         void OnDestroy()

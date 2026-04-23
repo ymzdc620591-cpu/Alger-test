@@ -7,50 +7,55 @@ namespace Game.Player
     public class PlayerController : MonoBehaviour
     {
         [Header("Movement")]
-        [SerializeField, Tooltip("移动速度")] float _moveSpeed = 5f;
-        [SerializeField, Tooltip("奔跑速度（Shift 加速）")] float _sprintSpeed = 9f;
-        [SerializeField, Tooltip("跳跃力度")] float _jumpForce = 5f;
-        [SerializeField, Tooltip("重力倍数")] float _gravityScale = 2f;
+        [SerializeField] float _moveSpeed   = 12f;
+        [SerializeField] float _sprintSpeed = 20f;
+
+        [Header("Jump & Gravity")]
+        [SerializeField] float _jumpHeight = 1.8f;   // 跳跃最大高度（单位）
+        [SerializeField] float _gravity    = -20f;   // 重力加速度（地球体感 ≈ -20）
 
         [Header("Camera")]
-        [SerializeField, Tooltip("相机Transform，留空自动取 Camera.main")] Transform _cameraTransform;
+        [SerializeField] Transform _cameraTransform;
+
+        [Header("Animation")]
+        [SerializeField] Animator _animator;
+        // Maps Unity speed (units/s) to Anim_Tall_Man blend tree range [2.4 walk → 6.5 run → 8.5 fastrun]
+        [SerializeField] float _animSpeedScale = 0.375f;
+
+        static readonly int _hashSpeed    = Animator.StringToHash("Speed");
+        static readonly int _hashOnGround = Animator.StringToHash("OnGround");
+        static readonly int _hashVY       = Animator.StringToHash("VY");
+        static readonly int _hashJump     = Animator.StringToHash("Jump");
+        static readonly int[] _hashAttacks =
+        {
+            Animator.StringToHash("Attack0"),
+            Animator.StringToHash("Attack1"),
+            Animator.StringToHash("Attack2"),
+        };
 
         CharacterController _cc;
-        Vector3 _velocity;
+        float _yVelocity;
+        float _coyoteTimer;
+        int   _attackIndex;
 
-        // 置 true 后外部脚本全权控制旋转，PlayerController 不再按移动方向转身
-        [HideInInspector] public bool ExternalRotation;
-
-        const float Gravity = -9.81f;
+        const float CoyoteTime = 0.15f;
 
         void Awake()
         {
             _cc = GetComponent<CharacterController>();
             if (_cameraTransform == null && Camera.main != null)
                 _cameraTransform = Camera.main.transform;
+            if (_animator == null)
+                _animator = GetComponentInChildren<Animator>();
+            if (_animator != null)
+                _animator.fireEvents = false;
         }
 
         void Update()
         {
             if (GameManager.Instance.State != GameState.Playing) return;
-            HandleGround();
             HandleMovement();
-            HandleJump();
-            ApplyGravity();
-        }
-
-        void HandleGround()
-        {
-            if (IsGrounded() && _velocity.y < 0f)
-                _velocity.y = -2f;
-        }
-
-        bool IsGrounded()
-        {
-            if (_cc.isGrounded) return true;
-            // 备用球形检测，修复 CharacterController 在斜面/边缘 isGrounded 失灵问题
-            var origin = transform.position + Vector3.up * (_cc.radius + 0.05f);
-            return Physics.SphereCast(origin, _cc.radius * 0.85f, Vector3.down, out _, 0.3f);
+            HandleVertical();
         }
 
         void HandleMovement()
@@ -66,22 +71,58 @@ namespace Game.Player
             Vector3 move = forward * v + right * h;
             if (move.magnitude > 1f) move.Normalize();
 
-            _cc.Move(move * ((Input.GetKey(KeyCode.LeftShift) ? _sprintSpeed : _moveSpeed) * Time.deltaTime));
+            float speed = Input.GetKey(KeyCode.LeftShift) ? _sprintSpeed : _moveSpeed;
+            _cc.Move(move * (speed * Time.deltaTime));
 
             if (move.sqrMagnitude > 0.01f && !ExternalRotation)
                 transform.forward = Vector3.Slerp(transform.forward, move, 10f * Time.deltaTime);
+
+            _animator?.SetFloat(_hashSpeed, move.magnitude * speed * _animSpeedScale);
         }
 
-        void HandleJump()
+        // SphereCast 覆盖整个脚底面积，斜面/不平地形均能检测
+        bool IsGrounded()
         {
-            if (Input.GetButtonDown("Jump") && IsGrounded())
-                _velocity.y = Mathf.Sqrt(_jumpForce * -2f * Gravity * _gravityScale);
+            var   origin   = transform.TransformPoint(_cc.center);
+            float castDist = _cc.height * 0.5f - _cc.radius + 0.2f;
+            return Physics.SphereCast(origin, _cc.radius * 0.9f, Vector3.down, out _,
+                castDist, ~LayerMask.GetMask("Player"), QueryTriggerInteraction.Ignore);
         }
 
-        void ApplyGravity()
+        void HandleVertical()
         {
-            _velocity.y += Gravity * _gravityScale * Time.deltaTime;
-            _cc.Move(_velocity * Time.deltaTime);
+            bool grounded = IsGrounded();
+
+            if (grounded)
+            {
+                _coyoteTimer = CoyoteTime;
+                if (_yVelocity < 0f) _yVelocity = -2f;
+            }
+            else
+            {
+                _coyoteTimer -= Time.deltaTime;
+                _yVelocity   += _gravity * Time.deltaTime;
+            }
+
+            // Coyote Time 窗口内均可起跳（含刚走下台阶的瞬间）
+            if (_coyoteTimer > 0f && Input.GetKeyDown(KeyCode.Space))
+            {
+                _yVelocity   = Mathf.Sqrt(-2f * _gravity * _jumpHeight);
+                _coyoteTimer = 0f;
+                _animator?.SetTrigger(_hashJump);
+            }
+
+            _animator?.SetBool(_hashOnGround, grounded);
+            _animator?.SetFloat(_hashVY, _yVelocity);
+
+            _cc.Move(Vector3.up * (_yVelocity * Time.deltaTime));
+        }
+
+        public void PlayAttack()
+        {
+            if (_animator == null) return;
+            _animator.SetTrigger(_hashAttacks[_attackIndex % _hashAttacks.Length]);
+            _attackIndex++;
         }
     }
 }

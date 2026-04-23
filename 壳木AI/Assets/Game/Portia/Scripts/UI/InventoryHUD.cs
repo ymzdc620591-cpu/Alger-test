@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using Starter.Core;
+using Game.System;
 
 namespace Game.Portia
 {
@@ -24,8 +25,11 @@ namespace Game.Portia
 
         void Update()
         {
-            if (Input.GetKeyDown(KeyCode.Tab))
-                SetOpen(!_open);
+            if (!Input.GetKeyDown(KeyCode.Tab)) return;
+            // 只在 Playing 时可以打开背包；背包已开时可以关闭（Paused 状态）
+            var state = GameManager.Instance?.State;
+            if (!_open && state != GameState.Playing) return;
+            SetOpen(!_open);
         }
 
         void SetOpen(bool v)
@@ -34,7 +38,15 @@ namespace Game.Portia
             _canvas.gameObject.SetActive(v);
             Cursor.lockState = v ? CursorLockMode.None    : CursorLockMode.Locked;
             Cursor.visible   = v;
-            if (v) RefreshAll();
+            if (v)
+            {
+                GameManager.Instance?.PauseGame();
+                RefreshAll();
+            }
+            else
+            {
+                GameManager.Instance?.ResumeGame();
+            }
         }
 
         void OnInventoryChanged(InventoryChangedEvent e)

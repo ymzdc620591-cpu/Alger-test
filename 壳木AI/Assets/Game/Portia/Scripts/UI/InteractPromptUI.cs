@@ -1,24 +1,31 @@
 using UnityEngine;
 using UnityEngine.UI;
 using Starter.Core;
+using Game.System;
 
 namespace Game.Portia
 {
     public class InteractPromptUI : MonoBehaviour
     {
+        Canvas        _canvas;
         RectTransform _promptRoot;
         Text          _promptLabel;
 
         void Awake()
         {
             BuildCanvas();
-            BuildCrosshair();
             BuildPrompt();
             SetPromptVisible(false);
+            _canvas.enabled = false; // 等进入 Playing 状态后才显示
             EventBus.On<InteractTargetChangedEvent>(OnTargetChanged);
+            EventBus.On<GameStateChangedEvent>(OnGameStateChanged);
         }
 
-        void OnDestroy() => EventBus.Off<InteractTargetChangedEvent>(OnTargetChanged);
+        void OnDestroy()
+        {
+            EventBus.Off<InteractTargetChangedEvent>(OnTargetChanged);
+            EventBus.Off<GameStateChangedEvent>(OnGameStateChanged);
+        }
 
         void OnTargetChanged(InteractTargetChangedEvent e)
         {
@@ -27,46 +34,20 @@ namespace Game.Portia
             SetPromptVisible(true);
         }
 
+        void OnGameStateChanged(GameStateChangedEvent e)
+        {
+            _canvas.enabled = e.Current == GameState.Playing;
+            if (e.Current != GameState.Playing) SetPromptVisible(false);
+        }
+
         void SetPromptVisible(bool v) => _promptRoot.gameObject.SetActive(v);
 
         void BuildCanvas()
         {
-            var c = gameObject.AddComponent<Canvas>();
-            c.renderMode   = RenderMode.ScreenSpaceOverlay;
-            c.sortingOrder = 20;
+            _canvas              = gameObject.AddComponent<Canvas>();
+            _canvas.renderMode   = RenderMode.ScreenSpaceOverlay;
+            _canvas.sortingOrder = 20;
             gameObject.AddComponent<CanvasScaler>();
-        }
-
-        void BuildCrosshair()
-        {
-            float armLen   = 10f;
-            float armThick = 2f;
-            float gap      = 5f;
-
-            var arms = new[] {
-                new Vector2( gap + armLen * 0.5f, 0f),
-                new Vector2(-(gap + armLen * 0.5f), 0f),
-                new Vector2(0f,  gap + armLen * 0.5f),
-                new Vector2(0f, -(gap + armLen * 0.5f)),
-            };
-            var sizes = new[] {
-                new Vector2(armLen, armThick),
-                new Vector2(armLen, armThick),
-                new Vector2(armThick, armLen),
-                new Vector2(armThick, armLen),
-            };
-
-            for (int i = 0; i < 4; i++)
-            {
-                var go   = new GameObject($"CrosshairArm{i}");
-                go.transform.SetParent(transform, false);
-                var rect = go.AddComponent<RectTransform>();
-                rect.anchorMin        = rect.anchorMax = new Vector2(0.5f, 0.5f);
-                rect.sizeDelta        = sizes[i];
-                rect.anchoredPosition = arms[i];
-                var img  = go.AddComponent<Image>();
-                img.color = new Color(1f, 1f, 1f, 0.85f);
-            }
         }
 
         void BuildPrompt()

@@ -1,46 +1,53 @@
 using UnityEngine;
 using Game.System;
+using Game.Player;
 using Starter.Core;
 
 namespace Game.Portia
 {
     public class InteractionDetector : MonoBehaviour
     {
-        [SerializeField] float   _maxDistance = 3.5f;
-        [SerializeField] KeyCode _interactKey = KeyCode.F;
+        [SerializeField] float   _radius      = 3.5f;
+        const            KeyCode InteractKey  = KeyCode.E;
 
-        Camera        _cam;
         IInteractable _current;
-
-        void Awake() => _cam = Camera.main;
 
         void Update()
         {
             if (GameManager.Instance == null || GameManager.Instance.State != GameState.Playing) return;
 
-            DetectTarget();
+            DetectNearest();
 
-            if (_current != null && Input.GetKeyDown(_interactKey))
+            if (_current != null && Input.GetKeyDown(InteractKey))
+            {
                 _current.Interact(gameObject);
+                if (_current is GatherNode)
+                    GetComponent<PlayerController>()?.PlayAttack();
+            }
         }
 
-        void DetectTarget()
+        void DetectNearest()
         {
-            IInteractable found = null;
+            IInteractable best     = null;
+            float         bestDist = float.MaxValue;
 
-            if (_cam != null)
+            var hits = Physics.OverlapSphere(transform.position, _radius, ~0, QueryTriggerInteraction.Collide);
+            foreach (var col in hits)
             {
-                var ray = new Ray(_cam.transform.position, _cam.transform.forward);
-                if (Physics.Raycast(ray, out var hit, _maxDistance + 8f, ~0, QueryTriggerInteraction.Collide))
+                var candidate = col.GetComponentInParent<IInteractable>();
+                if (candidate == null) continue;
+
+                float d = Vector3.Distance(transform.position, col.transform.position);
+                if (d < bestDist)
                 {
-                    if (Vector3.Distance(transform.position, hit.point) <= _maxDistance)
-                        found = hit.collider.GetComponentInParent<IInteractable>();
+                    bestDist = d;
+                    best     = candidate;
                 }
             }
 
-            if (found == _current) return;
+            if (best == _current) return;
 
-            _current = found;
+            _current = best;
             EventBus.Emit(new InteractTargetChangedEvent { Target = _current });
         }
     }

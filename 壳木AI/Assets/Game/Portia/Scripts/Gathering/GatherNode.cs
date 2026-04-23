@@ -10,11 +10,15 @@ namespace Game.Portia
         [SerializeField] string       _promptText      = "按 F 采集";
         [SerializeField] float        _pressInterval   = 0.3f;
         [SerializeField] int          _requiredPresses = 3;
+        [SerializeField] bool         _fallOnGather    = false;
+        [SerializeField] float        _barYOffset      = 7f;
         [SerializeField] GatherDrop[] _drops;
 
-        int   _pressCount;
-        float _lastPressTime = -10f;
-        bool  _done;
+        int               _pressCount;
+        float             _lastPressTime  = -10f;
+        bool              _done;
+        Vector3           _lastInitiatorPos;
+        WorldProgressBar  _bar;
 
         public string PromptText => _pressCount > 0
             ? $"{_promptText}  [{_pressCount}/{_requiredPresses}]"
@@ -25,10 +29,14 @@ namespace Game.Portia
             if (_done) return;
             if (Time.time - _lastPressTime < _pressInterval) return;
 
+            if (initiator != null) _lastInitiatorPos = initiator.transform.position;
             _lastPressTime = Time.time;
             _pressCount++;
 
-            // 刷新提示文字
+            if (_bar == null)
+                _bar = WorldProgressBar.Attach(transform, new Color(0.95f, 0.75f, 0.1f), _barYOffset);
+            _bar.SetFill((float)_pressCount / _requiredPresses);
+
             EventBus.Emit(new InteractTargetChangedEvent { Target = this });
 
             StopAllCoroutines();
@@ -40,22 +48,28 @@ namespace Game.Portia
 
         IEnumerator WobbleRoutine()
         {
-            var originalRot = transform.localRotation;
+            var pivot       = transform.position; // 手动摆放，transform.position 即为底部锚点
+            var originalRot = transform.rotation;
+            var axis        = transform.right;
+
             float duration = 0.25f, elapsed = 0f;
             while (elapsed < duration)
             {
                 elapsed += Time.deltaTime;
                 float angle = Mathf.Sin(elapsed / duration * Mathf.PI * 4f) * 6f;
-                transform.localRotation = originalRot * Quaternion.Euler(0f, 0f, angle);
+                transform.SetPositionAndRotation(pivot, originalRot);
+                transform.RotateAround(pivot, axis, angle);
                 yield return null;
             }
-            transform.localRotation = originalRot;
+            transform.SetPositionAndRotation(pivot, originalRot);
         }
 
         IEnumerator CompleteAfterWobble()
         {
             yield return new WaitForSeconds(0.25f);
             _done = true;
+
+            if (_bar != null) { Destroy(_bar.gameObject); _bar = null; }
 
             foreach (var d in _drops)
             {
@@ -64,7 +78,35 @@ namespace Game.Portia
             }
 
             EventBus.Emit(new InteractTargetChangedEvent { Target = null });
-            // TODO P1: 隐藏模型，启动 CD 重生计时
+
+            if (_fallOnGather)
+                yield return StartCoroutine(FallAndDisappear());
+            else
+                gameObject.SetActive(false);
+        }
+
+        IEnumerator FallAndDisappear()
+        {
+            var fallDir = (transform.position - _lastInitiatorPos);
+            fallDir.y = 0f;
+            if (fallDir.sqrMagnitude < 0.01f) fallDir = transform.forward;
+            fallDir.Normalize();
+
+            var rotAxis  = Vector3.Cross(Vector3.up, fallDir).normalized;
+            var startPos = transform.position;
+            var startRot = transform.rotation;
+
+            float duration = 1f, elapsed = 0f;
+            while (elapsed < duration)
+            {
+                elapsed += Time.deltaTime;
+                float eased = 1f - Mathf.Pow(1f - elapsed / duration, 2f);
+                transform.SetPositionAndRotation(startPos, startRot);
+                transform.RotateAround(startPos, rotAxis, 88f * eased);
+                yield return null;
+            }
+
+            yield return new WaitForSeconds(0.5f);
             gameObject.SetActive(false);
         }
 
