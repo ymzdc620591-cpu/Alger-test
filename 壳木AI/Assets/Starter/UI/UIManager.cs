@@ -33,7 +33,7 @@ namespace Starter.UI
             if (_initialized) return;
             _initialized = true;
             // 优先从 Resources 加载 UIRoot 预制体，否则代码创建
-            var rootGo = ResManager.InstantiateGameObjectSync("UI/UIRoot") ?? CreateUIRoot();
+            var rootGo = ResManager.TryLoadGameObject("UI/UIRoot") is {} r ? Object.Instantiate(r) : CreateUIRoot();
             Object.DontDestroyOnLoad(rootGo);
             _rootTrans = rootGo.transform;
 
@@ -151,7 +151,7 @@ namespace Starter.UI
         // 层级：CanvasPanel(Canvas) → Content(RectTransform，全拉伸)
         GameObject InstantiateCanvasPanel()
         {
-            var template = ResManager.LoadGameObjectSync("UI/CanvasPanel");
+            var template = ResManager.TryLoadGameObject("UI/CanvasPanel");
             if (template != null) return Object.Instantiate(template);
 
             var root = new GameObject("CanvasPanel");

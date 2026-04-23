@@ -15,6 +15,10 @@ namespace Starter.Runtime
             return prefab;
         }
 
+        // 找不到时静默返回 null，不打错误日志（适用于有代码回退的场景）
+        public static GameObject TryLoadGameObject(string location)
+            => Resources.Load<GameObject>(location);
+
         public static GameObject InstantiateGameObjectSync(string location)
         {
             var prefab = Resources.Load<GameObject>(location);

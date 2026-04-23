@@ -1,5 +1,6 @@
-using UnityEngine;
 using Starter.Core;
+using Starter.UI;
+using UnityEngine;
 
 namespace Game.System
 {
@@ -39,5 +40,20 @@ namespace Game.System
         public void PauseGame()  => ChangeState(GameState.Paused);
         public void ResumeGame() => ChangeState(GameState.Playing);
         public void GameOver()   => ChangeState(GameState.GameOver);
+
+        void Update()
+        {
+            if (!Input.GetKeyDown(KeyCode.Escape)) return;
+
+            if (_state == GameState.Playing)
+            {
+                PauseGame();
+                UIManager.Inst.PushPanel("UI/TestPausePanel");
+            }
+            else if (_state == GameState.Paused)
+            {
+                UIManager.Inst.PopPanel();
+            }
+        }
     }
 }
