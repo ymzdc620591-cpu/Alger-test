@@ -8,6 +8,7 @@ namespace Game.Player
     {
         [Header("Movement")]
         [SerializeField, Tooltip("移动速度")] float _moveSpeed = 5f;
+        [SerializeField, Tooltip("奔跑速度（Shift 加速）")] float _sprintSpeed = 9f;
         [SerializeField, Tooltip("跳跃力度")] float _jumpForce = 5f;
         [SerializeField, Tooltip("重力倍数")] float _gravityScale = 2f;
 
@@ -40,8 +41,16 @@ namespace Game.Player
 
         void HandleGround()
         {
-            if (_cc.isGrounded && _velocity.y < 0f)
+            if (IsGrounded() && _velocity.y < 0f)
                 _velocity.y = -2f;
+        }
+
+        bool IsGrounded()
+        {
+            if (_cc.isGrounded) return true;
+            // 备用球形检测，修复 CharacterController 在斜面/边缘 isGrounded 失灵问题
+            var origin = transform.position + Vector3.up * (_cc.radius + 0.05f);
+            return Physics.SphereCast(origin, _cc.radius * 0.85f, Vector3.down, out _, 0.3f);
         }
 
         void HandleMovement()
@@ -57,7 +66,7 @@ namespace Game.Player
             Vector3 move = forward * v + right * h;
             if (move.magnitude > 1f) move.Normalize();
 
-            _cc.Move(move * (_moveSpeed * Time.deltaTime));
+            _cc.Move(move * ((Input.GetKey(KeyCode.LeftShift) ? _sprintSpeed : _moveSpeed) * Time.deltaTime));
 
             if (move.sqrMagnitude > 0.01f && !ExternalRotation)
                 transform.forward = Vector3.Slerp(transform.forward, move, 10f * Time.deltaTime);
@@ -65,7 +74,7 @@ namespace Game.Player
 
         void HandleJump()
         {
-            if (Input.GetButtonDown("Jump") && _cc.isGrounded)
+            if (Input.GetButtonDown("Jump") && IsGrounded())
                 _velocity.y = Mathf.Sqrt(_jumpForce * -2f * Gravity * _gravityScale);
         }
 

@@ -1,0 +1,256 @@
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.UI;
+using Starter.Core;
+
+namespace Game.Portia
+{
+    public class InventoryHUD : MonoBehaviour
+    {
+        Canvas    _canvas;
+        Transform _slotContainer;
+        bool      _open;
+
+        readonly Dictionary<int, Text> _countTexts = new Dictionary<int, Text>();
+
+        void Awake()
+        {
+            BuildUI();
+            SetOpen(false);
+            EventBus.On<InventoryChangedEvent>(OnInventoryChanged);
+        }
+
+        void OnDestroy() => EventBus.Off<InventoryChangedEvent>(OnInventoryChanged);
+
+        void Update()
+        {
+            if (Input.GetKeyDown(KeyCode.Tab))
+                SetOpen(!_open);
+        }
+
+        void SetOpen(bool v)
+        {
+            _open = v;
+            _canvas.gameObject.SetActive(v);
+            Cursor.lockState = v ? CursorLockMode.None    : CursorLockMode.Locked;
+            Cursor.visible   = v;
+            if (v) RefreshAll();
+        }
+
+        void OnInventoryChanged(InventoryChangedEvent e)
+        {
+            if (_open) UpdateOrCreateSlot(e.Gid, e.NewCount);
+        }
+
+        void RefreshAll()
+        {
+            if (InventoryManager.Instance == null) return;
+            foreach (var kvp in InventoryManager.Instance.AllItems)
+                UpdateOrCreateSlot(kvp.Key, kvp.Value);
+        }
+
+        void UpdateOrCreateSlot(int gid, int count)
+        {
+            if (!_countTexts.TryGetValue(gid, out var t))
+            {
+                t = CreateSlot(gid);
+                _countTexts[gid] = t;
+            }
+            t.text = $"×{count}";
+        }
+
+        Text CreateSlot(int gid)
+        {
+            var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf")
+                    ?? Resources.GetBuiltinResource<Font>("Arial.ttf");
+
+            // Slot root (GridLayoutGroup sizes this automatically)
+            var slotGo = new GameObject($"Slot_{gid}");
+            slotGo.transform.SetParent(_slotContainer, false);
+            slotGo.AddComponent<RectTransform>();
+            var bg   = slotGo.AddComponent<Image>();
+            bg.color = new Color(0.15f, 0.17f, 0.22f, 1f);
+
+            // Icon placeholder
+            var iconGo   = new GameObject("Icon");
+            iconGo.transform.SetParent(slotGo.transform, false);
+            var iconRect = iconGo.AddComponent<RectTransform>();
+            iconRect.anchorMin        = new Vector2(0.1f, 0.42f);
+            iconRect.anchorMax        = new Vector2(0.9f, 0.95f);
+            iconRect.offsetMin        = iconRect.offsetMax = Vector2.zero;
+            iconGo.AddComponent<Image>().color = new Color(0.3f, 0.32f, 0.4f, 0.8f);
+
+            // Item name
+            var nameGo = new GameObject("Name");
+            nameGo.transform.SetParent(slotGo.transform, false);
+            var nameRect = nameGo.AddComponent<RectTransform>();
+            nameRect.anchorMin = new Vector2(0f, 0.22f);
+            nameRect.anchorMax = new Vector2(1f, 0.46f);
+            nameRect.offsetMin = nameRect.offsetMax = Vector2.zero;
+            var nameText      = nameGo.AddComponent<Text>();
+            nameText.text     = InventoryManager.GetItemName(gid);
+            nameText.fontSize = 13;
+            nameText.color    = new Color(0.85f, 0.85f, 0.85f);
+            nameText.alignment = TextAnchor.MiddleCenter;
+            if (font != null) nameText.font = font;
+
+            // Count
+            var countGo = new GameObject("Count");
+            countGo.transform.SetParent(slotGo.transform, false);
+            var countRect = countGo.AddComponent<RectTransform>();
+            countRect.anchorMin = new Vector2(0f, 0f);
+            countRect.anchorMax = new Vector2(1f, 0.22f);
+            countRect.offsetMin = countRect.offsetMax = Vector2.zero;
+            var countText      = countGo.AddComponent<Text>();
+            countText.fontSize = 14;
+            countText.color    = new Color(1f, 0.85f, 0.3f);
+            countText.alignment = TextAnchor.MiddleCenter;
+            if (font != null) countText.font = font;
+
+            return countText;
+        }
+
+        void BuildUI()
+        {
+            var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf")
+                    ?? Resources.GetBuiltinResource<Font>("Arial.ttf");
+
+            // ── Canvas ────────────────────────────────────────────────
+            var canvasGo = new GameObject("InventoryCanvas");
+            canvasGo.transform.SetParent(transform, false);
+            _canvas              = canvasGo.AddComponent<Canvas>();
+            _canvas.renderMode   = RenderMode.ScreenSpaceOverlay;
+            _canvas.sortingOrder = 50;
+            canvasGo.AddComponent<CanvasScaler>();
+
+            // Full-screen dim
+            var bgGo   = new GameObject("Bg");
+            bgGo.transform.SetParent(canvasGo.transform, false);
+            var bgRect = bgGo.AddComponent<RectTransform>();
+            bgRect.anchorMin = Vector2.zero;
+            bgRect.anchorMax = Vector2.one;
+            bgRect.offsetMin = bgRect.offsetMax = Vector2.zero;
+            bgGo.AddComponent<Image>().color = new Color(0f, 0f, 0f, 0.5f);
+
+            // ── Main Panel ────────────────────────────────────────────
+            var panelGo   = new GameObject("Panel");
+            panelGo.transform.SetParent(canvasGo.transform, false);
+            var panelRect = panelGo.AddComponent<RectTransform>();
+            panelRect.anchorMin = new Vector2(0.1f, 0.08f);
+            panelRect.anchorMax = new Vector2(0.9f, 0.92f);
+            panelRect.offsetMin = panelRect.offsetMax = Vector2.zero;
+            panelGo.AddComponent<Image>().color = new Color(0.07f, 0.08f, 0.12f, 0.98f);
+
+            // Title bar
+            AddLabel(panelGo.transform, "Title", "背    包", 30,
+                new Vector2(0f, 0.91f), new Vector2(1f, 1f), font);
+
+            // Divider
+            AddDivider(panelGo.transform, new Vector2(0.02f, 0.905f), new Vector2(0.98f, 0.908f));
+
+            // ── ScrollView ────────────────────────────────────────────
+            var scrollGo   = new GameObject("ScrollView");
+            scrollGo.transform.SetParent(panelGo.transform, false);
+            var scrollRt   = scrollGo.AddComponent<RectTransform>();
+            scrollRt.anchorMin = new Vector2(0.01f, 0.08f);
+            scrollRt.anchorMax = new Vector2(0.99f, 0.90f);
+            scrollRt.offsetMin = scrollRt.offsetMax = Vector2.zero;
+            var sr         = scrollGo.AddComponent<ScrollRect>();
+            sr.horizontal  = false;
+            sr.vertical    = true;
+            sr.scrollSensitivity = 30f;
+
+            // Viewport (clip content)
+            var vpGo   = new GameObject("Viewport");
+            vpGo.transform.SetParent(scrollGo.transform, false);
+            var vpRect = vpGo.AddComponent<RectTransform>();
+            vpRect.anchorMin = Vector2.zero;
+            vpRect.anchorMax = Vector2.one;
+            vpRect.offsetMin = new Vector2(0f, 0f);
+            vpRect.offsetMax = new Vector2(-18f, 0f); // leave space for scrollbar
+            vpGo.AddComponent<RectMask2D>();
+            sr.viewport = vpRect;
+
+            // Content (auto-expands vertically)
+            var contentGo   = new GameObject("Content");
+            contentGo.transform.SetParent(vpGo.transform, false);
+            var contentRect = contentGo.AddComponent<RectTransform>();
+            contentRect.anchorMin = new Vector2(0f, 1f);
+            contentRect.anchorMax = new Vector2(1f, 1f);
+            contentRect.pivot     = new Vector2(0.5f, 1f);
+            contentRect.offsetMin = contentRect.offsetMax = Vector2.zero;
+            var glg               = contentGo.AddComponent<GridLayoutGroup>();
+            glg.cellSize          = new Vector2(120f, 105f);
+            glg.spacing           = new Vector2(10f, 10f);
+            glg.padding           = new RectOffset(12, 12, 12, 12);
+            glg.constraint        = GridLayoutGroup.Constraint.FixedColumnCount;
+            glg.constraintCount   = 6;
+            glg.childAlignment    = TextAnchor.UpperLeft;
+            var csf               = contentGo.AddComponent<ContentSizeFitter>();
+            csf.verticalFit       = ContentSizeFitter.FitMode.PreferredSize;
+            sr.content            = contentRect;
+            _slotContainer        = contentGo.transform;
+
+            // Vertical scrollbar
+            var sbGo   = new GameObject("Scrollbar");
+            sbGo.transform.SetParent(scrollGo.transform, false);
+            var sbRect = sbGo.AddComponent<RectTransform>();
+            sbRect.anchorMin = new Vector2(1f, 0f);
+            sbRect.anchorMax = Vector2.one;
+            sbRect.offsetMin = new Vector2(-18f, 0f);
+            sbRect.offsetMax = Vector2.zero;
+            sbGo.AddComponent<Image>().color = new Color(0.12f, 0.13f, 0.17f, 1f);
+            var sb            = sbGo.AddComponent<Scrollbar>();
+            sb.direction      = Scrollbar.Direction.BottomToTop;
+
+            var handleGo   = new GameObject("Handle");
+            handleGo.transform.SetParent(sbGo.transform, false);
+            var handleRect = handleGo.AddComponent<RectTransform>();
+            handleRect.anchorMin = Vector2.zero;
+            handleRect.anchorMax = Vector2.one;
+            handleRect.offsetMin = new Vector2(2f, 2f);
+            handleRect.offsetMax = new Vector2(-2f, -2f);
+            var handleImg          = handleGo.AddComponent<Image>();
+            handleImg.color        = new Color(0.45f, 0.47f, 0.6f, 1f);
+            sb.handleRect          = handleRect;
+            sb.targetGraphic       = handleImg;
+
+            sr.verticalScrollbar                = sb;
+            sr.verticalScrollbarVisibility      = ScrollRect.ScrollbarVisibility.AutoHide;
+
+            // ── Hint ──────────────────────────────────────────────────
+            AddDivider(panelGo.transform, new Vector2(0.02f, 0.072f), new Vector2(0.98f, 0.075f));
+            AddLabel(panelGo.transform, "Hint", "[ Tab ] 关闭背包", 14,
+                new Vector2(0f, 0f), new Vector2(1f, 0.07f), font,
+                new Color(0.6f, 0.6f, 0.65f, 1f));
+        }
+
+        static void AddLabel(Transform parent, string name, string text, int fontSize,
+            Vector2 anchorMin, Vector2 anchorMax, Font font, Color? color = null)
+        {
+            var go   = new GameObject(name);
+            go.transform.SetParent(parent, false);
+            var rect = go.AddComponent<RectTransform>();
+            rect.anchorMin = anchorMin;
+            rect.anchorMax = anchorMax;
+            rect.offsetMin = rect.offsetMax = Vector2.zero;
+            var t       = go.AddComponent<Text>();
+            t.text      = text;
+            t.fontSize  = fontSize;
+            t.color     = color ?? Color.white;
+            t.alignment = TextAnchor.MiddleCenter;
+            if (font != null) t.font = font;
+        }
+
+        static void AddDivider(Transform parent, Vector2 anchorMin, Vector2 anchorMax)
+        {
+            var go   = new GameObject("Divider");
+            go.transform.SetParent(parent, false);
+            var rect = go.AddComponent<RectTransform>();
+            rect.anchorMin = anchorMin;
+            rect.anchorMax = anchorMax;
+            rect.offsetMin = rect.offsetMax = Vector2.zero;
+            go.AddComponent<Image>().color = new Color(1f, 1f, 1f, 0.12f);
+        }
+    }
+}

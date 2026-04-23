@@ -5,7 +5,10 @@
       "Bash(git add *)",
       "Bash(mkdir -p /tmp/pkg_extract)",
       "Bash(tar -xzf \"/d/GameJam04151020.unitypackage\" -C /tmp/pkg_extract)",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Bash(git push *)",
+      "Bash(curl -m 10 -Is https://github.com)",
+      "Bash(xargs -d '\\\\n' git add)"
     ]
   }
 }
