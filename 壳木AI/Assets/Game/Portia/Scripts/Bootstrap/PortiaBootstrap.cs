@@ -9,6 +9,7 @@ namespace Game.Portia
         void Start()
         {
             EnsureRuntimeHUD<ItemPickupToastUI>("ItemPickupToastUI");
+            EnsureRuntimeHUD<QuickBarHUD>("QuickBarHUD");
             UIManager.Inst.Init();
             UIManager.Inst.PushPanel("UI/MainMenuPresetPanel");
             Cursor.lockState = CursorLockMode.None;
