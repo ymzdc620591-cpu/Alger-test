@@ -2,39 +2,69 @@
 %TAG !u! tag:unity3d.com,2011:
 --- !u!21 &2100000
 Material:
-  serializedVersion: 6
+  serializedVersion: 8
   m_ObjectHideFlags: 0
-  m_PrefabParentObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 0}
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
   m_Name: mtree021_summer
-  m_Shader: {fileID: 4800000, guid: c276d00c3f6ebff47aded893b03d2fee, type: 3}
-  m_ShaderKeywords: _ALPHATEST_ON _COLORMODE_DIFFUSE _EMISSION _SHAKEMODE_R _USEAO_NONE
+  m_Shader: {fileID: 4800000, guid: 7e9e3e6b8e8a4f05a94d52f03b3c9d21, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords:
+  - _ALPHATEST_ON
+  - _COLORMODE_DIFFUSE
+  - _EMISSION
+  - _SHAKEMODE_R
+  - _USEAO_NONE
   m_LightmapFlags: 1
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
   m_CustomRenderQueue: -1
   stringTagMap: {}
   disabledShaderPasses: []
+  m_LockedProperties: 
   m_SavedProperties:
     serializedVersion: 3
     m_TexEnvs:
-      _BumpTex:
+    - _BumpTex:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
-      _MainTex:
+    - _MainTex:
         m_Texture: {fileID: 2800000, guid: ef54f2ae2b0ea4540854814cb32fb164, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    m_Ints: []
     m_Floats:
-      _AlphaClip: 0.497
-      _ColorMode: 0
-      _Glossiness: 0.2
-      _LerpNormal: 0.618
-      _Metallic: 0
-      _UseAO: 0
+    - _AlphaClip: 0.497
+    - _AmbientStrength: 1
+    - _BackLightStrength: 0.35
+    - _ColorMode: 0
+    - _Cutoff: 0.45
+    - _DirectStrength: 0.9
+    - _FlutterStrength: 0.03
+    - _Glossiness: 0.2
+    - _LerpNormal: 0.618
+    - _Metallic: 0
+    - _NormalUpBlend: 0.35
+    - _RimPower: 2.5
+    - _ShadeSoftness: 0.12
+    - _ShadeThreshold: 0.5
+    - _UseAO: 0
+    - _VerticalTintPower: 1.2
+    - _WindMaskPower: 1.6
+    - _WindScale: 0.35
+    - _WindSpeed: 1.2
+    - _WindStrength: 0.08
     m_Colors:
-      _AO_extend: {r: 0, g: 0, b: 0, a: 0}
-      _AO_pos: {r: 0, g: 0, b: 0, a: 0}
-      _MainColor: {r: 0.746856, g: 0.71323526, b: 1, a: 1}
-      _WindDirection: {r: 6, g: 6, b: 6, a: 6}
+    - _AO_extend: {r: 0, g: 0, b: 0, a: 0}
+    - _AO_pos: {r: 0, g: 0, b: 0, a: 0}
+    - _BackLightColor: {r: 0.7, g: 0.95, b: 0.54999995, a: 1}
+    - _BottomColor: {r: 0.8399999, g: 0.92, b: 0.8399999, a: 1}
+    - _MainColor: {r: 0.746856, g: 0.71323526, b: 1, a: 1}
+    - _ShadowColor: {r: 0.58, g: 0.72, b: 0.58, a: 1}
+    - _TopColor: {r: 1.08, g: 1.08, b: 0.97999996, a: 1}
+    - _WindDirection: {r: 6, g: 6, b: 6, a: 6}
+  m_BuildTextureStacks: []
