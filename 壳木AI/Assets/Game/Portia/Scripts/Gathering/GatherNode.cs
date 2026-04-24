@@ -12,6 +12,7 @@ namespace Game.Portia
         [SerializeField] int          _requiredPresses = 3;
         [SerializeField] bool         _fallOnGather    = false;
         [SerializeField] float        _barYOffset      = 7f;
+        [SerializeField] int          _requiredToolGid = 0;   // 0 = 无需工具
         [SerializeField] GatherDrop[] _drops;
 
         int               _pressCount;
@@ -20,15 +21,28 @@ namespace Game.Portia
         Vector3           _lastInitiatorPos;
         WorldProgressBar  _bar;
 
-        public string PromptText => _pressCount > 0
-            ? $"{_promptText}  [{_pressCount}/{_requiredPresses}]"
-            : _promptText;
+        public string PromptText
+        {
+            get
+            {
+                if (_requiredToolGid != 0 && !HasTool())
+                    return $"需要{InventoryManager.GetItemName(_requiredToolGid)}才能采集";
+                return _pressCount > 0
+                    ? $"{_promptText}  [{_pressCount}/{_requiredPresses}]"
+                    : _promptText;
+            }
+        }
+
+        bool HasTool() =>
+            InventoryManager.Instance != null &&
+            InventoryManager.Instance.GetCount(_requiredToolGid) > 0;
 
         public bool IsDone => _done;
 
         public void Interact(GameObject initiator)
         {
             if (_done) return;
+            if (_requiredToolGid != 0 && !HasTool()) return;
             if (Time.time - _lastPressTime < _pressInterval) return;
 
             if (initiator != null) _lastInitiatorPos = initiator.transform.position;
@@ -36,8 +50,14 @@ namespace Game.Portia
             _pressCount++;
 
             if (_bar == null)
-                _bar = WorldProgressBar.Attach(transform, new Color(0.95f, 0.75f, 0.1f), _barYOffset);
-            _bar.SetFill((float)_pressCount / _requiredPresses);
+            {
+                _bar = WorldProgressBar.Attach(transform, Color.green, _barYOffset);
+                _bar.SetFill(1f);
+            }
+
+            float health = 1f - (float)_pressCount / _requiredPresses;
+            _bar.SetFill(health);
+            _bar.SetColor(Color.Lerp(new Color(0.9f, 0.15f, 0.1f), new Color(0.15f, 0.85f, 0.2f), health));
 
             EventBus.Emit(new InteractTargetChangedEvent { Target = this });
 

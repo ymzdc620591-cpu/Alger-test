@@ -1,3 +1,4 @@
+using System;
 using System.Text;
 using UnityEngine;
 using UnityEngine.UI;
@@ -8,15 +9,23 @@ using Starter.Runtime;
 namespace Starter.UI
 {
     // 用法：UIManager.Inst.Init()（在 GameBootstrap 中调用一次）
-    //       UIManager.Inst.PushPanel("UI/HUDPanel")
-    //       UIManager.Inst.PushPanel<HUDPanel>("UI/HUDPanel")
-    //       UIManager.Inst.PopPanel()
+    //       UIManager.Inst.PushPanel("UI/HUDPanel")           —— 从 Resources 加载的 UIPanel
+    //       UIManager.Inst.PushExternal(CloseCallback)        —— 外部自建 Canvas 面板（返回应使用的 sortingOrder）
+    //       UIManager.Inst.PopPanel()                         —— 关闭栈顶面板（UIPanel 或外部）
+    //       UIManager.Inst.HasAnyPanel()                      —— 是否有任意面板在栈中
     public class UIManager
     {
         UIManager() { }
         public static UIManager Inst { get; } = new UIManager();
 
-        readonly ExtStack<UIPanel> _panelStack = new();
+        sealed class PanelEntry
+        {
+            public UIPanel Panel;       // UIPanel 面板；null 表示外部面板
+            public Action  CloseAction; // 外部面板的关闭回调
+            public bool IsExternal => Panel == null;
+        }
+
+        readonly ExtStack<PanelEntry> _stack = new();
         Transform _rootTrans;
         Camera _mainCamera;
         Camera _uiCamera;
@@ -32,7 +41,6 @@ namespace Starter.UI
         {
             if (_initialized) return;
             _initialized = true;
-            // 优先从 Resources 加载 UIRoot 预制体，否则代码创建
             var rootGo = ResManager.TryLoadGameObject("UI/UIRoot") is {} r ? Object.Instantiate(r) : CreateUIRoot();
             Object.DontDestroyOnLoad(rootGo);
             _rootTrans = rootGo.transform;
@@ -78,15 +86,17 @@ namespace Starter.UI
 
             go.name = resGo.name;
 
-            // 保持 prefab 中设置的 RectTransform 偏移
             if (go.transform is RectTransform rect && resGo.transform is RectTransform resRect)
             {
                 rect.offsetMin = resRect.offsetMin;
                 rect.offsetMax = resRect.offsetMax;
             }
 
-            ApplySortOrder(canvasPanel.GetComponent<Canvas>());
-            _panelStack.Push(panel);
+            _sortOrder += 10;
+            var canvas = canvasPanel.GetComponent<Canvas>();
+            if (canvas != null) canvas.sortingOrder = _sortOrder;
+
+            _stack.Push(new PanelEntry { Panel = panel });
             panel.FadeIn();
             return panel;
         }
@@ -94,61 +104,85 @@ namespace Starter.UI
         public T PushPanel<T>(string res) where T : UIPanel
             => PushPanel(res) as T;
 
+        // 注册外部自建 Canvas 面板，返回该面板应使用的 Canvas.sortingOrder
+        public int PushExternal(Action onClose)
+        {
+            _sortOrder += 10;
+            _stack.Push(new PanelEntry { CloseAction = onClose });
+            return _sortOrder;
+        }
+
         public void PopPanel()
         {
-            if (_panelStack.Count == 0) return;
-            var panel = _panelStack.Pop();
-            panel.OnPop();
-            panel.FadeOut();
+            if (_stack.Count == 0) return;
+            var entry = _stack.Pop();
+            if (entry.IsExternal)
+                entry.CloseAction?.Invoke();
+            else
+            {
+                entry.Panel.OnPop();
+                entry.Panel.FadeOut();
+            }
         }
 
         public void PopPanel(UIPanel panel)
         {
-            _panelStack.Pop(panel);
-            panel.OnPop();
-            panel.FadeOut();
+            for (int i = 0; i < _stack.Count; i++)
+            {
+                var entry = _stack.CheckByIndex(i);
+                if (entry.Panel == panel)
+                {
+                    _stack.Pop(entry);
+                    panel.OnPop();
+                    panel.FadeOut();
+                    return;
+                }
+            }
         }
 
         public void PopAllPanels()
         {
-            while (_panelStack.Count > 0)
+            while (_stack.Count > 0)
             {
-                var panel = _panelStack.Pop();
-                panel.OnPop();
-                panel.FadeOut();
+                var entry = _stack.Pop();
+                if (entry.IsExternal)
+                    entry.CloseAction?.Invoke();
+                else
+                {
+                    entry.Panel.OnPop();
+                    entry.Panel.FadeOut();
+                }
             }
         }
 
         // ── 查询 ───────────────────────────────────────────────────────────────
 
-        public UIPanel GetTopPanel() => _panelStack.Peek();
+        // 仅返回栈顶的 UIPanel（若栈顶是外部面板则返回 null）
+        public UIPanel GetTopPanel() => _stack.Peek()?.Panel;
+
+        // 栈中是否有任何面板（UIPanel 或外部）
+        public bool HasAnyPanel() => _stack.Count > 0;
 
         public bool CheckHavePanel(string panelName)
         {
-            for (int i = 0; i < _panelStack.Count; i++)
-                if (_panelStack.CheckByIndex(i).name == panelName)
+            for (int i = 0; i < _stack.Count; i++)
+            {
+                var entry = _stack.CheckByIndex(i);
+                if (entry.Panel != null && entry.Panel.name == panelName)
                     return true;
+            }
             return false;
         }
 
         public override string ToString()
         {
             var sb = new StringBuilder();
-            sb.Append($"[UIManager] stackCount={_panelStack.Count}");
+            sb.Append($"[UIManager] stackCount={_stack.Count}");
             return sb.ToString();
         }
 
         // ── 内部工具 ──────────────────────────────────────────────────────────
 
-        void ApplySortOrder(Canvas canvas)
-        {
-            if (canvas == null) return;
-            _sortOrder += 10;
-            canvas.sortingOrder = _sortOrder;
-        }
-
-        // 从 Resources 加载 CanvasPanel 模板，否则代码创建
-        // 层级：CanvasPanel(Canvas) → Content(RectTransform，全拉伸)
         GameObject InstantiateCanvasPanel()
         {
             var template = ResManager.TryLoadGameObject("UI/CanvasPanel");

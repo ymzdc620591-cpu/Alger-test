@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using Starter.Core;
+using Starter.UI;
 using Game.System;
 
 namespace Game.Portia
@@ -17,7 +18,7 @@ namespace Game.Portia
         void Awake()
         {
             BuildUI();
-            SetOpen(false);
+            _canvas.gameObject.SetActive(false);
             EventBus.On<InventoryChangedEvent>(OnInventoryChanged);
         }
 
@@ -26,26 +27,34 @@ namespace Game.Portia
         void Update()
         {
             if (!Input.GetKeyDown(KeyCode.Tab)) return;
-            // 只在 Playing 时可以打开背包；背包已开时可以关闭（Paused 状态）
             var state = GameManager.Instance?.State;
             if (!_open && state != GameState.Playing) return;
-            SetOpen(!_open);
+
+            if (!_open) OpenBag();
+            else        UIManager.Inst.PopPanel(); // UIManager 调用 CloseBag 回调
         }
 
-        void SetOpen(bool v)
+        void OpenBag()
         {
-            _open = v;
-            _canvas.gameObject.SetActive(v);
-            Cursor.lockState = v ? CursorLockMode.None    : CursorLockMode.Locked;
-            Cursor.visible   = v;
-            if (v)
+            _open = true;
+            _canvas.gameObject.SetActive(true);
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible   = true;
+            RefreshAll();
+            // 向 UIManager 注册，并拿到正确的层级顺序
+            _canvas.sortingOrder = UIManager.Inst.PushExternal(CloseBag);
+        }
+
+        // 由 UIManager 调用（ESC 或 Tab 关闭时）
+        void CloseBag()
+        {
+            _open = false;
+            _canvas.gameObject.SetActive(false);
+            // 仅当所有 UI 都关闭时才锁定鼠标
+            if (!UIManager.Inst.HasAnyPanel())
             {
-                GameManager.Instance?.PauseGame();
-                RefreshAll();
-            }
-            else
-            {
-                GameManager.Instance?.ResumeGame();
+                Cursor.lockState = CursorLockMode.Locked;
+                Cursor.visible   = false;
             }
         }
 
@@ -76,14 +85,12 @@ namespace Game.Portia
             var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf")
                     ?? Resources.GetBuiltinResource<Font>("Arial.ttf");
 
-            // Slot root (GridLayoutGroup sizes this automatically)
             var slotGo = new GameObject($"Slot_{gid}");
             slotGo.transform.SetParent(_slotContainer, false);
             slotGo.AddComponent<RectTransform>();
             var bg   = slotGo.AddComponent<Image>();
             bg.color = new Color(0.15f, 0.17f, 0.22f, 1f);
 
-            // Icon placeholder
             var iconGo   = new GameObject("Icon");
             iconGo.transform.SetParent(slotGo.transform, false);
             var iconRect = iconGo.AddComponent<RectTransform>();
@@ -92,7 +99,6 @@ namespace Game.Portia
             iconRect.offsetMin        = iconRect.offsetMax = Vector2.zero;
             iconGo.AddComponent<Image>().color = new Color(0.3f, 0.32f, 0.4f, 0.8f);
 
-            // Item name
             var nameGo = new GameObject("Name");
             nameGo.transform.SetParent(slotGo.transform, false);
             var nameRect = nameGo.AddComponent<RectTransform>();
@@ -106,7 +112,6 @@ namespace Game.Portia
             nameText.alignment = TextAnchor.MiddleCenter;
             if (font != null) nameText.font = font;
 
-            // Count
             var countGo = new GameObject("Count");
             countGo.transform.SetParent(slotGo.transform, false);
             var countRect = countGo.AddComponent<RectTransform>();
@@ -127,15 +132,13 @@ namespace Game.Portia
             var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf")
                     ?? Resources.GetBuiltinResource<Font>("Arial.ttf");
 
-            // ── Canvas ────────────────────────────────────────────────
             var canvasGo = new GameObject("InventoryCanvas");
             canvasGo.transform.SetParent(transform, false);
             _canvas              = canvasGo.AddComponent<Canvas>();
             _canvas.renderMode   = RenderMode.ScreenSpaceOverlay;
-            _canvas.sortingOrder = 50;
+            _canvas.sortingOrder = 10; // 初始值低，OpenBag 时动态设置
             canvasGo.AddComponent<CanvasScaler>();
 
-            // Full-screen dim
             var bgGo   = new GameObject("Bg");
             bgGo.transform.SetParent(canvasGo.transform, false);
             var bgRect = bgGo.AddComponent<RectTransform>();
@@ -144,7 +147,6 @@ namespace Game.Portia
             bgRect.offsetMin = bgRect.offsetMax = Vector2.zero;
             bgGo.AddComponent<Image>().color = new Color(0f, 0f, 0f, 0.5f);
 
-            // ── Main Panel ────────────────────────────────────────────
             var panelGo   = new GameObject("Panel");
             panelGo.transform.SetParent(canvasGo.transform, false);
             var panelRect = panelGo.AddComponent<RectTransform>();
@@ -153,14 +155,11 @@ namespace Game.Portia
             panelRect.offsetMin = panelRect.offsetMax = Vector2.zero;
             panelGo.AddComponent<Image>().color = new Color(0.07f, 0.08f, 0.12f, 0.98f);
 
-            // Title bar
             AddLabel(panelGo.transform, "Title", "背    包", 30,
                 new Vector2(0f, 0.91f), new Vector2(1f, 1f), font);
 
-            // Divider
             AddDivider(panelGo.transform, new Vector2(0.02f, 0.905f), new Vector2(0.98f, 0.908f));
 
-            // ── ScrollView ────────────────────────────────────────────
             var scrollGo   = new GameObject("ScrollView");
             scrollGo.transform.SetParent(panelGo.transform, false);
             var scrollRt   = scrollGo.AddComponent<RectTransform>();
@@ -172,18 +171,16 @@ namespace Game.Portia
             sr.vertical    = true;
             sr.scrollSensitivity = 30f;
 
-            // Viewport (clip content)
             var vpGo   = new GameObject("Viewport");
             vpGo.transform.SetParent(scrollGo.transform, false);
             var vpRect = vpGo.AddComponent<RectTransform>();
             vpRect.anchorMin = Vector2.zero;
             vpRect.anchorMax = Vector2.one;
             vpRect.offsetMin = new Vector2(0f, 0f);
-            vpRect.offsetMax = new Vector2(-18f, 0f); // leave space for scrollbar
+            vpRect.offsetMax = new Vector2(-18f, 0f);
             vpGo.AddComponent<RectMask2D>();
             sr.viewport = vpRect;
 
-            // Content (auto-expands vertically)
             var contentGo   = new GameObject("Content");
             contentGo.transform.SetParent(vpGo.transform, false);
             var contentRect = contentGo.AddComponent<RectTransform>();
@@ -203,7 +200,6 @@ namespace Game.Portia
             sr.content            = contentRect;
             _slotContainer        = contentGo.transform;
 
-            // Vertical scrollbar
             var sbGo   = new GameObject("Scrollbar");
             sbGo.transform.SetParent(scrollGo.transform, false);
             var sbRect = sbGo.AddComponent<RectTransform>();
@@ -230,7 +226,6 @@ namespace Game.Portia
             sr.verticalScrollbar                = sb;
             sr.verticalScrollbarVisibility      = ScrollRect.ScrollbarVisibility.AutoHide;
 
-            // ── Hint ──────────────────────────────────────────────────
             AddDivider(panelGo.transform, new Vector2(0.02f, 0.072f), new Vector2(0.98f, 0.075f));
             AddLabel(panelGo.transform, "Hint", "[ Tab ] 关闭背包", 14,
                 new Vector2(0f, 0f), new Vector2(1f, 0.07f), font,

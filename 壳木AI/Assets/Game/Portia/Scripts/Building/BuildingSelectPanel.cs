@@ -22,6 +22,7 @@ namespace Game.Portia
 
         public void Show() => _canvas.enabled = true;
         public void Hide() => _canvas.enabled = false;
+        public void SetSortOrder(int order) => _canvas.sortingOrder = order;
 
         // ── UI Construction ────────────────────────────────────────────────────
 

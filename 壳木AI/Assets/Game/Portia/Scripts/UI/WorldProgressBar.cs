@@ -5,6 +5,7 @@ namespace Game.Portia
 {
     public class WorldProgressBar : MonoBehaviour
     {
+        Image         _fillImg;
         RectTransform _fill;
         Camera        _cam;
 
@@ -32,6 +33,11 @@ namespace Game.Portia
             _fill.anchorMax = new Vector2(Mathf.Clamp01(t), _fill.anchorMax.y);
         }
 
+        public void SetColor(Color c)
+        {
+            if (_fillImg != null) _fillImg.color = c;
+        }
+
         void Build(Color fillColor)
         {
             var canvas        = gameObject.AddComponent<Canvas>();
@@ -51,6 +57,7 @@ namespace Game.Portia
 
             var fill   = new GameObject("Fill").AddComponent<Image>();
             fill.transform.SetParent(transform, false);
+            _fillImg   = fill;
             _fill      = (RectTransform)fill.transform;
             _fill.anchorMin = new Vector2(0f, 0.12f);
             _fill.anchorMax = new Vector2(0f, 0.88f);

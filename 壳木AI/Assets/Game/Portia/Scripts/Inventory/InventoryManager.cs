@@ -55,8 +55,15 @@ namespace Game.Portia
                 case ItemGid.SteelIngot:  return "钢锭";
                 case ItemGid.CookingPot:  return "烹饪锅";
                 case ItemGid.Axe:         return "斧头";
+                case ItemGid.Pickaxe:     return "镐子";
                 case ItemGid.WheatSeed:   return "小麦种子";
                 case ItemGid.Wheat:       return "小麦";
+                case ItemGid.Lettuce:     return "生菜";
+                case ItemGid.Fruit:       return "树果";
+                case ItemGid.ZhuGua:      return "竹瓜";
+                case ItemGid.Radish:      return "萝卜";
+                case ItemGid.Corn:        return "玉米";
+                case ItemGid.Cotton:      return "棉花";
                 case ItemGid.Food:        return "菜肴";
                 case ItemGid.Fish:        return "鱼";
                 case ItemGid.Coin:        return "金币";

@@ -29,7 +29,8 @@ namespace Game.Portia
 
         void OnTargetChanged(InteractTargetChangedEvent e)
         {
-            if (e.Target == null) { SetPromptVisible(false); return; }
+            if (e.Target == null || string.IsNullOrEmpty(e.Target.PromptText))
+            { SetPromptVisible(false); return; }
             _promptLabel.text = e.Target.PromptText;
             SetPromptVisible(true);
         }

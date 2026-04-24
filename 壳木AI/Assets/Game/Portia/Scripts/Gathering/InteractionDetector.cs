@@ -7,7 +7,7 @@ namespace Game.Portia
 {
     public class InteractionDetector : MonoBehaviour
     {
-        [SerializeField] float   _radius      = 3.5f;
+        [SerializeField] float   _radius      = 2.0f;
         const            KeyCode InteractKey  = KeyCode.E;
 
         IInteractable _current;

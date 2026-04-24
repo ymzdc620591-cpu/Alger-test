@@ -18,6 +18,8 @@ namespace Game.Portia
         const string FurnacePrefabPath  = "Assets/Model/itemmall/comparegame/ItemCom_machine_furnace02.prefab";
         const string AssemblyPrefabPath = "Assets/Model/itemmall/comparegame/ItemCom_machine_power01.prefab";
         const string RecipeDataFolder   = "Assets/Game/Portia/Data/Recipes";
+        const string PlantingPrefabPath = "Assets/Model/home/HomeItem_PlantBox_01.prefab";
+        const string CropDataFolder     = "Assets/Game/Portia/Data/Crops";
         const int    TreeCount      = 45;
         const int    RockCount      = 30;
         const int    IronOreCount   = 20;
@@ -95,6 +97,9 @@ namespace Game.Portia
             if (furnacePrefab  == null) Debug.LogWarning($"[壳木AI] 找不到熔炉预制体: {FurnacePrefabPath}");
             if (assemblyPrefab == null) Debug.LogWarning($"[壳木AI] 找不到组装台预制体: {AssemblyPrefabPath}");
 
+            var plantingPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(PlantingPrefabPath);
+            if (plantingPrefab == null) Debug.LogWarning($"[壳木AI] 找不到种植箱预制体: {PlantingPrefabPath}");
+
             // 切割机配方：木材×1 → 木板×1（5s）
             var sawRecipe = GetOrCreateRecipe("Recipe_Wood2Plank",
                 MachineType.Sawmill, "木头 → 木板", (int)ItemGid.Plank, 1, 5f,
@@ -111,15 +116,21 @@ namespace Game.Portia
                 new RecipeInput { gid = (int)ItemGid.Plank,     count = 4 },
                 new RecipeInput { gid = (int)ItemGid.IronIngot,  count = 2 });
 
-            // 组装台配方：木板×2 + 铁锭×1 → 斧头×1（10s）
+            // 组装台配方：木材×2 + 石块×1 → 斧头×1（4s）
             var axeRecipe = GetOrCreateRecipe("Recipe_Axe",
-                MachineType.Assembly, "木板 + 铁锭 → 斧头", (int)ItemGid.Axe, 1, 10f,
-                new RecipeInput { gid = (int)ItemGid.Plank,    count = 2 },
-                new RecipeInput { gid = (int)ItemGid.IronIngot, count = 1 });
+                MachineType.Assembly, "木材 + 石块 → 斧头", (int)ItemGid.Axe, 1, 4f,
+                new RecipeInput { gid = (int)ItemGid.Wood,  count = 2 },
+                new RecipeInput { gid = (int)ItemGid.Stone, count = 1 });
+
+            // 组装台配方：木材×2 + 石块×2 → 镐子×1（5s）
+            var pickaxeRecipe = GetOrCreateRecipe("Recipe_Pickaxe",
+                MachineType.Assembly, "木材 + 石块 → 镐子", (int)ItemGid.Pickaxe, 1, 5f,
+                new RecipeInput { gid = (int)ItemGid.Wood,  count = 2 },
+                new RecipeInput { gid = (int)ItemGid.Stone, count = 2 });
 
             var so       = new SerializedObject(bc);
             var machines = so.FindProperty("_machines");
-            machines.arraySize = 3;
+            machines.arraySize = 4;
 
             SetMachineEntry(machines.GetArrayElementAtIndex(0),
                 "切割机", "木头 → 木板",     sawingPrefab,   "切割机", scale: 3f,
@@ -129,13 +140,31 @@ namespace Game.Portia
                 new[] { furnaceRecipe });
             SetMachineEntry(machines.GetArrayElementAtIndex(2),
                 "组装台", "加工材料 → 成品", assemblyPrefab, "组装台", scale: 3f,
-                new[] { cookingPotRecipe, axeRecipe });
+                new[] { axeRecipe, pickaxeRecipe, cookingPotRecipe });
+
+            // 种植箱
+            var lettuce = GetOrCreateCrop("Crop_Lettuce", "生菜",  (int)ItemGid.Lettuce, 1, 60f,
+                "Assets/Model/plant/PlantG_Lettuce_2.prefab", "Assets/Model/plant/Plant_Lettuce_2.prefab");
+            var fruit   = GetOrCreateCrop("Crop_Fruit",   "树果",  (int)ItemGid.Fruit,   2, 90f,
+                "Assets/Model/plant/PlantG_ShuGuo.prefab",   "Assets/Model/plant/Plant_ShuGuo.prefab");
+            var zhuGua  = GetOrCreateCrop("Crop_ZhuGua",  "竹瓜",  (int)ItemGid.ZhuGua,  2, 80f,
+                "Assets/Model/plant/PlantG_ZhuGua.prefab",   "Assets/Model/plant/Plant_ZhuGua.prefab");
+            var radish  = GetOrCreateCrop("Crop_Radish",  "萝卜",  (int)ItemGid.Radish,  2, 45f,
+                "Assets/Model/plant/PlantG_radish.prefab",   "Assets/Model/plant/Plant_radish.prefab");
+            var corn    = GetOrCreateCrop("Crop_Corn",    "玉米",  (int)ItemGid.Corn,    3, 100f,
+                null, "Assets/Model/plant/Plant_Corn_2.prefab");
+            var cotton  = GetOrCreateCrop("Crop_Cotton",  "棉花",  (int)ItemGid.Cotton,  3, 120f,
+                null, "Assets/Model/plant/Plant_Cotton_1.prefab");
+
+            SetMachineEntry(machines.GetArrayElementAtIndex(3),
+                "种植箱", "种植各类作物", plantingPrefab, "", scale: 1f,
+                null, new[] { lettuce, fruit, zhuGua, radish, corn, cotton });
 
             var maxDist = so.FindProperty("_maxPlaceDistance");
             if (maxDist != null) maxDist.floatValue = 20f;
 
             so.ApplyModifiedProperties();
-            Debug.Log("[壳木AI] BuildController 配置完成 → 切割机 + 熔炉 + 组装台（配方已绑定）");
+            Debug.Log("[壳木AI] BuildController 配置完成 → 切割机 + 熔炉 + 组装台 + 种植箱（配方已绑定）");
         }
 
         // inputs 可以是 1~N 个 RecipeInput，用 params 展开
@@ -167,8 +196,39 @@ namespace Game.Portia
             return recipe;
         }
 
+        static CropData GetOrCreateCrop(string assetName, string cropName,
+            int outputGid, int outputCount, float growTime,
+            string seedlingPath, string maturePath)
+        {
+            if (!AssetDatabase.IsValidFolder("Assets/Game/Portia/Data"))
+                AssetDatabase.CreateFolder("Assets/Game/Portia", "Data");
+            if (!AssetDatabase.IsValidFolder(CropDataFolder))
+                AssetDatabase.CreateFolder("Assets/Game/Portia/Data", "Crops");
+
+            string path = $"{CropDataFolder}/{assetName}.asset";
+            var crop = AssetDatabase.LoadAssetAtPath<CropData>(path);
+            if (crop == null)
+            {
+                crop = ScriptableObject.CreateInstance<CropData>();
+                AssetDatabase.CreateAsset(crop, path);
+            }
+
+            crop.cropName    = cropName;
+            crop.outputGid   = outputGid;
+            crop.outputCount = outputCount;
+            crop.growTime    = growTime;
+            if (seedlingPath != null)
+                crop.seedlingPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(seedlingPath);
+            if (maturePath != null)
+                crop.maturePrefab = AssetDatabase.LoadAssetAtPath<GameObject>(maturePath);
+
+            EditorUtility.SetDirty(crop);
+            AssetDatabase.SaveAssets();
+            return crop;
+        }
+
         static void SetMachineEntry(SerializedProperty elem, string display, string desc,
-            GameObject prefab, string machineName, float scale = 3f, RecipeData[] recipes = null)
+            GameObject prefab, string machineName, float scale = 3f, RecipeData[] recipes = null, CropData[] crops = null)
         {
             elem.FindPropertyRelative("displayName").stringValue      = display;
             elem.FindPropertyRelative("description").stringValue      = desc;
@@ -183,6 +243,14 @@ namespace Game.Portia
                 recipesProp.arraySize = recipes.Length;
                 for (int i = 0; i < recipes.Length; i++)
                     recipesProp.GetArrayElementAtIndex(i).objectReferenceValue = recipes[i];
+            }
+
+            var cropsProp = elem.FindPropertyRelative("crops");
+            if (cropsProp != null && crops != null)
+            {
+                cropsProp.arraySize = crops.Length;
+                for (int i = 0; i < crops.Length; i++)
+                    cropsProp.GetArrayElementAtIndex(i).objectReferenceValue = crops[i];
             }
         }
 
@@ -313,7 +381,7 @@ namespace Game.Portia
                     if (oldTrigger != null) Object.DestroyImmediate(oldTrigger.gameObject);
                     AddInteractionTrigger(child.gameObject, new Vector3(3f, 6f, 3f), new Vector3(0f, 3f, 0f));
                     var node = child.gameObject.AddComponent<GatherNode>();
-                    SetGatherNode(node, (int)ItemGid.Wood, 2, "按 F 砍树（木材）", true);
+                    SetGatherNode(node, (int)ItemGid.Wood, 2, "按 E 砍树（木材）", true, (int)ItemGid.Axe);
                     count++;
                 }
                 else if (isRock)
@@ -322,7 +390,7 @@ namespace Game.Portia
                     if (oldTrigger != null) Object.DestroyImmediate(oldTrigger.gameObject);
                     AddInteractionTrigger(child.gameObject, new Vector3(2f, 1.5f, 2f), new Vector3(0f, 0.75f, 0f));
                     var node = child.gameObject.AddComponent<GatherNode>();
-                    SetGatherNode(node, (int)ItemGid.Stone, 3, "按 F 挖矿（石块）", false);
+                    SetGatherNode(node, (int)ItemGid.Stone, 3, "按 E 挖矿（石块）", false, (int)ItemGid.Pickaxe);
                     count++;
                 }
                 else if (isIronOre && hasMesh)
@@ -331,7 +399,7 @@ namespace Game.Portia
                     if (oldTrigger != null) Object.DestroyImmediate(oldTrigger.gameObject);
                     AddInteractionTrigger(child.gameObject, new Vector3(2f, 1.5f, 2f), new Vector3(0f, 0.75f, 0f));
                     var node = child.gameObject.AddComponent<GatherNode>();
-                    SetGatherNode(node, (int)ItemGid.IronOre, 2, "按 F 挖矿（铁矿石）", false);
+                    SetGatherNode(node, (int)ItemGid.IronOre, 2, "按 E 挖矿（铁矿石）", false, (int)ItemGid.Pickaxe);
                     count++;
                 }
                 else
@@ -485,31 +553,31 @@ namespace Game.Portia
             var group = new GameObject("ResourceNodes");
             group.transform.SetParent(parent, false);
 
-            // 树木 GID=1（木材）
+            // 树木 GID=1（木材）—— 需要斧头
             if (treePrefab != null)
                 SpawnNodes(treePrefab, group.transform, TreeCount,
-                    gid: (int)ItemGid.Wood, itemCount: 2, prompt: "按 F 砍树（木材）",
+                    gid: (int)ItemGid.Wood, itemCount: 2, prompt: "按 E 砍树（木材）",
                     triggerSize: new Vector3(1f, 2f, 1f), triggerCenter: new Vector3(0f, 1f, 0f),
-                    fallOnGather: true);
+                    fallOnGather: true, requiredToolGid: (int)ItemGid.Axe);
 
-            // 石矿 GID=2（石块）
+            // 石矿 GID=2（石块）—— 需要镐子
             if (rockPrefab != null)
                 SpawnNodes(rockPrefab, group.transform, RockCount,
-                    gid: (int)ItemGid.Stone, itemCount: 3, prompt: "按 F 挖矿（石块）",
+                    gid: (int)ItemGid.Stone, itemCount: 3, prompt: "按 E 挖矿（石块）",
                     triggerSize: new Vector3(0.8f, 0.6f, 0.8f), triggerCenter: new Vector3(0f, 0.3f, 0f),
-                    fallOnGather: false);
+                    fallOnGather: false, requiredToolGid: (int)ItemGid.Pickaxe);
 
-            // 铁矿石 GID=3（复用石头模型）
+            // 铁矿石 GID=3（复用石头模型）—— 需要镐子
             if (rockPrefab != null)
                 SpawnNodes(rockPrefab, group.transform, IronOreCount,
-                    gid: (int)ItemGid.IronOre, itemCount: 2, prompt: "按 F 挖矿（铁矿石）",
+                    gid: (int)ItemGid.IronOre, itemCount: 2, prompt: "按 E 挖矿（铁矿石）",
                     triggerSize: new Vector3(0.8f, 0.6f, 0.8f), triggerCenter: new Vector3(0f, 0.3f, 0f),
-                    fallOnGather: false);
+                    fallOnGather: false, requiredToolGid: (int)ItemGid.Pickaxe);
         }
 
         static void SpawnNodes(GameObject prefab, Transform parent,
             int count, int gid, int itemCount, string prompt,
-            Vector3 triggerSize, Vector3 triggerCenter, bool fallOnGather = false)
+            Vector3 triggerSize, Vector3 triggerCenter, bool fallOnGather = false, int requiredToolGid = 0)
         {
             for (int i = 0; i < count; i++)
             {
@@ -533,7 +601,7 @@ namespace Game.Portia
                 AddInteractionTrigger(go, triggerSize, triggerCenter);
 
                 var node = go.AddComponent<GatherNode>();
-                SetGatherNode(node, gid, itemCount, prompt, fallOnGather);
+                SetGatherNode(node, gid, itemCount, prompt, fallOnGather, requiredToolGid);
             }
         }
 
@@ -552,7 +620,7 @@ namespace Game.Portia
 
         // ── Helpers ───────────────────────────────────────────────────────────
 
-        static void SetGatherNode(GatherNode node, int gid, int count, string prompt, bool fallOnGather = false)
+        static void SetGatherNode(GatherNode node, int gid, int count, string prompt, bool fallOnGather = false, int requiredToolGid = 0)
         {
             var so = new SerializedObject(node);
             var pt = so.FindProperty("_promptText");
@@ -560,6 +628,9 @@ namespace Game.Portia
 
             var fall = so.FindProperty("_fallOnGather");
             if (fall != null) fall.boolValue = fallOnGather;
+
+            var toolProp = so.FindProperty("_requiredToolGid");
+            if (toolProp != null) toolProp.intValue = requiredToolGid;
 
             var drops = so.FindProperty("_drops");
             if (drops != null)

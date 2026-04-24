@@ -1,6 +1,7 @@
 using System.Text;
 using UnityEngine;
 using UnityEngine.UI;
+using Starter.UI;
 
 namespace Game.Portia
 {
@@ -9,6 +10,7 @@ namespace Game.Portia
         static ProcessingMachinePanel _current;
 
         ProcessingMachine _machine;
+        Canvas            _canvas;
         Font              _font;
 
         // ── 静态入口 ───────────────────────────────────────────────────────────
@@ -17,7 +19,7 @@ namespace Game.Portia
         {
             if (_current != null)
             {
-                Destroy(_current.gameObject);
+                _current.Close();
                 _current = null;
             }
 
@@ -25,6 +27,10 @@ namespace Game.Portia
             _current  = go.AddComponent<ProcessingMachinePanel>();
             _current._machine = machine;
             _current.Build(machine.MachineName, recipes);
+
+            // 向 UIManager 注册，拿到正确的层级排序
+            var instance = _current;
+            _current._canvas.sortingOrder = UIManager.Inst.PushExternal(instance.DoClose);
 
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible   = true;
@@ -37,16 +43,14 @@ namespace Game.Portia
             _font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf")
                  ?? Resources.GetBuiltinResource<Font>("Arial.ttf");
 
-            var canvas            = gameObject.AddComponent<Canvas>();
-            canvas.renderMode     = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder   = 100;
+            _canvas               = gameObject.AddComponent<Canvas>();
+            _canvas.renderMode    = RenderMode.ScreenSpaceOverlay;
+            _canvas.sortingOrder  = 10; // 临时值，Show() 中会用 UIManager 覆盖
             gameObject.AddComponent<CanvasScaler>();
             gameObject.AddComponent<GraphicRaycaster>();
 
-            // 半透明遮罩
             MakeImage(transform, "Overlay", Vector2.zero, Vector2.one).color = new Color(0f, 0f, 0f, 0.6f);
 
-            // 面板主体
             var panel = MakeImage(transform, "Panel",
                 new Vector2(0.3f, 0.18f), new Vector2(0.7f, 0.88f));
             panel.color = new Color(0.08f, 0.09f, 0.13f, 0.97f);
@@ -54,11 +58,9 @@ namespace Game.Portia
 
             MakeText(pt, "Title", title, 24, new Vector2(0f, 0.87f), Vector2.one);
 
-            // 分割线
             MakeImage(pt, "Divider", new Vector2(0.04f, 0.855f), new Vector2(0.96f, 0.86f))
                 .color = new Color(1f, 1f, 1f, 0.2f);
 
-            // 配方列表
             var list = MakeRect(pt, "RecipeList", new Vector2(0.04f, 0.12f), new Vector2(0.96f, 0.84f));
             list.gameObject.AddComponent<Image>().color = Color.clear;
             var vlg                    = list.gameObject.AddComponent<VerticalLayoutGroup>();
@@ -71,18 +73,15 @@ namespace Game.Portia
             if (recipes != null && recipes.Length > 0)
             {
                 foreach (var r in recipes)
-                {
                     if (r != null) AddRecipeRow(list, r);
-                }
             }
             else
             {
-                var t = MakeText(list, "NoRecipe", "该机器暂无可用配方", 16,
+                MakeText(list, "NoRecipe", "该机器暂无可用配方", 16,
                     new Vector2(0f, 0.3f), new Vector2(1f, 0.7f),
                     new Color(1f, 1f, 1f, 0.45f));
             }
 
-            // 关闭提示
             MakeText(pt, "Hint", "[ Esc ] 关闭", 13,
                 Vector2.zero, new Vector2(1f, 0.1f), new Color(1f, 1f, 1f, 0.4f));
         }
@@ -91,7 +90,6 @@ namespace Game.Portia
         {
             var inv = InventoryManager.Instance;
 
-            // 检查所有输入材料是否充足
             bool canCraft = inv != null && recipe.inputs != null && recipe.inputs.Length > 0;
             if (canCraft)
                 foreach (var inp in recipe.inputs)
@@ -107,7 +105,6 @@ namespace Game.Portia
                 ? new Color(0.12f, 0.22f, 0.14f, 0.9f)
                 : new Color(0.22f, 0.12f, 0.12f, 0.6f);
 
-            // 拼接输入材料文字
             var sb = new StringBuilder();
             if (recipe.inputs != null)
             {
@@ -129,7 +126,6 @@ namespace Game.Portia
 
             if (!canCraft) return;
 
-            // 制作按钮
             var btnGo  = new GameObject("CraftBtn");
             btnGo.transform.SetParent(rowGo.transform, false);
             var btnR   = btnGo.AddComponent<RectTransform>();
@@ -155,17 +151,21 @@ namespace Game.Portia
             Close();
         }
 
-        void Update()
-        {
-            if (Input.GetKeyDown(KeyCode.Escape))
-                Close();
-        }
-
+        // 主动关闭（点击制作按钮时调用）：通过 UIManager 弹出，UIManager 调用 DoClose
         void Close()
         {
+            UIManager.Inst.PopPanel();
+        }
+
+        // UIManager 回调：实际销毁逻辑
+        void DoClose()
+        {
             if (_current == this) _current = null;
-            Cursor.lockState = CursorLockMode.Locked;
-            Cursor.visible   = false;
+            if (!UIManager.Inst.HasAnyPanel())
+            {
+                Cursor.lockState = CursorLockMode.Locked;
+                Cursor.visible   = false;
+            }
             Destroy(gameObject);
         }
 

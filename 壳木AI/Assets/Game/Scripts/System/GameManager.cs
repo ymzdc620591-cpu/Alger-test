@@ -45,6 +45,12 @@ namespace Game.System
         {
             if (!Input.GetKeyDown(KeyCode.Escape)) return;
 
+            if (_state == GameState.Playing && UIManager.Inst.HasAnyPanel())
+            {
+                UIManager.Inst.PopPanel();
+                return;
+            }
+
             if (_state == GameState.Playing)
             {
                 PauseGame();
@@ -52,6 +58,7 @@ namespace Game.System
             }
             else if (_state == GameState.Paused)
             {
+                ResumeGame();
                 UIManager.Inst.PopPanel();
             }
         }
