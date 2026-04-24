@@ -26,8 +26,8 @@ namespace Game.Portia
         [SerializeField] MachineEntry[] _machines;
 
         [Header("放置参数")]
-        [SerializeField] LayerMask _groundMask      = -1;
-        [SerializeField] float     _maxPlaceDistance = 20f;
+        [SerializeField] LayerMask _groundMask        = -1;
+        [SerializeField] float     _placeForwardDist  = 3f;   // 预览物距玩家正前方距离
 
         enum BuildState { Idle, Selecting, Placing }
 
@@ -139,32 +139,26 @@ namespace Game.Portia
         void UpdatePreview()
         {
             if (_previewGo == null) return;
-            var cam = Camera.main;
-            if (cam == null) return;
 
-            var ray = new Ray(cam.transform.position, cam.transform.forward);
+            // 玩家水平朝向正前方固定距离
+            var fwd = transform.forward;
+            fwd.y = 0f;
+            if (fwd.sqrMagnitude < 0.001f) fwd = Vector3.forward;
+            else fwd.Normalize();
+
+            var basePos = transform.position + fwd * _placeForwardDist;
+
+            // 从该点上方向下射线贴地
             Vector3 targetPos;
-
-            if (Physics.Raycast(ray, out var hit, _maxPlaceDistance, _groundMask, QueryTriggerInteraction.Ignore)
+            if (Physics.Raycast(basePos + Vector3.up * 5f, Vector3.down, out var hit, 10f,
+                    _groundMask, QueryTriggerInteraction.Ignore)
                 && hit.normal.y > 0.3f)
             {
                 targetPos = hit.point;
             }
             else
             {
-                float groundY = transform.position.y;
-                float denom   = ray.direction.y;
-                if (Mathf.Abs(denom) > 0.001f)
-                {
-                    float t = (groundY - ray.origin.y) / denom;
-                    targetPos = t > 0f
-                        ? ray.origin + ray.direction * Mathf.Min(t, _maxPlaceDistance)
-                        : transform.position + transform.forward * 2f;
-                }
-                else
-                {
-                    targetPos = transform.position + transform.forward * 2f;
-                }
+                targetPos = new Vector3(basePos.x, transform.position.y, basePos.z);
             }
 
             _previewGo.transform.position = targetPos + Vector3.up * _groundOffset;
