@@ -5,6 +5,7 @@ using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using Starter.Core;
 using Starter.Runtime;
+using Object = UnityEngine.Object;
 
 namespace Starter.UI
 {

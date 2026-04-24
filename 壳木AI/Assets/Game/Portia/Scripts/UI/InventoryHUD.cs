@@ -9,14 +9,16 @@ namespace Game.Portia
 {
     public class InventoryHUD : MonoBehaviour
     {
-        Canvas    _canvas;
-        Transform _slotContainer;
-        bool      _open;
+        Canvas          _canvas;
+        Transform       _slotContainer;
+        bool            _open;
+        ItemIconConfig  _iconConfig;
 
         readonly Dictionary<int, Text> _countTexts = new Dictionary<int, Text>();
 
         void Awake()
         {
+            _iconConfig = Resources.Load<ItemIconConfig>("Game/ItemIconConfig");
             BuildUI();
             _canvas.gameObject.SetActive(false);
             EventBus.On<InventoryChangedEvent>(OnInventoryChanged);
@@ -97,7 +99,18 @@ namespace Game.Portia
             iconRect.anchorMin        = new Vector2(0.1f, 0.42f);
             iconRect.anchorMax        = new Vector2(0.9f, 0.95f);
             iconRect.offsetMin        = iconRect.offsetMax = Vector2.zero;
-            iconGo.AddComponent<Image>().color = new Color(0.3f, 0.32f, 0.4f, 0.8f);
+            var iconImg = iconGo.AddComponent<Image>();
+            var sprite  = _iconConfig != null ? _iconConfig.GetIcon(gid) : null;
+            if (sprite != null)
+            {
+                iconImg.sprite         = sprite;
+                iconImg.color          = Color.white;
+                iconImg.preserveAspect = true;
+            }
+            else
+            {
+                iconImg.color = new Color(0.3f, 0.32f, 0.4f, 0.8f);
+            }
 
             var nameGo = new GameObject("Name");
             nameGo.transform.SetParent(slotGo.transform, false);
