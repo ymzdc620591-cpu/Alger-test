@@ -37,6 +37,13 @@ namespace Game.Portia
                 var candidate = col.GetComponentInParent<IInteractable>();
                 if (candidate == null) continue;
 
+                // 跳过已完成的采集节点
+                if (candidate is GatherNode gn && gn.IsDone) continue;
+
+                // 跳过未激活的游戏对象
+                var candidateGo = (candidate as MonoBehaviour)?.gameObject;
+                if (candidateGo != null && !candidateGo.activeInHierarchy) continue;
+
                 float d = Vector3.Distance(transform.position, col.transform.position);
                 if (d < bestDist)
                 {

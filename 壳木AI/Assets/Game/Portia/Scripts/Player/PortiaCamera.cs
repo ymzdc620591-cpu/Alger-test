@@ -12,19 +12,24 @@ namespace Game.Portia
         [SerializeField] float _sensitivityY =  2f;
         [SerializeField] float _heightOffset = 1.4f;
 
+        [SerializeField] float _collisionRadius      = 0.25f;
+        [SerializeField] float _collisionSmoothSpeed = 10f;
+
         float _yaw;
         float _pitch = 45f;
+        Vector3 _currentCollisionOffset;
+        readonly RaycastHit[] _collisionHits = new RaycastHit[8];
 
         void Start()
         {
-            // 鼠标状态由游戏流程（Bootstrap / MainMenu）统一管理，相机不在此处抢占
+            // Cursor lock is managed by the game flow.
         }
 
         void LateUpdate()
         {
             if (_target == null) return;
 
-            // 背包/UI 打开时（光标解锁）不响应鼠标旋转
+            // Ignore mouse look while UI has unlocked the cursor.
             if (Cursor.lockState == CursorLockMode.Locked)
             {
                 _yaw   += Input.GetAxis("Mouse X") * _sensitivityX;
@@ -35,14 +40,48 @@ namespace Game.Portia
             var pivot  = _target.position + Vector3.up * _heightOffset;
             var offset = Quaternion.Euler(_pitch, _yaw, 0f) * new Vector3(0f, 0f, -_distance);
 
-            // 简单相机碰撞：射线从 pivot 向相机方向检测，避免穿墙
+            // Ignore self hits so sprinting does not cause camera collision flicker.
             var desiredPos = pivot + offset;
             var dir        = offset.normalized;
-            if (Physics.Raycast(pivot, dir, out var hit, _distance, ~LayerMask.GetMask("Ignore Raycast")))
-                transform.position = pivot + dir * Mathf.Max(0.5f, hit.distance - 0.15f);
-            else
-                transform.position = desiredPos;
+            float targetOffset = 0f;
+            float nearestDistance = _distance;
+            bool blocked = false;
 
+            int hitCount = Physics.SphereCastNonAlloc(
+                pivot,
+                _collisionRadius,
+                dir,
+                _collisionHits,
+                _distance,
+                ~LayerMask.GetMask("Ignore Raycast"),
+                QueryTriggerInteraction.Ignore);
+
+            for (int i = 0; i < hitCount; i++)
+            {
+                var hit = _collisionHits[i];
+                if (hit.collider == null)
+                    continue;
+
+                if (hit.collider.transform == _target || hit.collider.transform.IsChildOf(_target))
+                    continue;
+
+                if (hit.distance < nearestDistance)
+                {
+                    nearestDistance = hit.distance;
+                    blocked = true;
+                }
+            }
+
+            if (blocked)
+                targetOffset = Mathf.Max(0.5f, nearestDistance - 0.15f) - _distance;
+
+            // Smooth the collision offset so the camera settles instead of vibrating.
+            _currentCollisionOffset = Vector3.Lerp(
+                _currentCollisionOffset,
+                dir * targetOffset,
+                _collisionSmoothSpeed * Time.deltaTime);
+
+            transform.position = desiredPos + _currentCollisionOffset;
             transform.LookAt(pivot);
         }
     }

@@ -24,6 +24,8 @@ namespace Game.Portia
             ? $"{_promptText}  [{_pressCount}/{_requiredPresses}]"
             : _promptText;
 
+        public bool IsDone => _done;
+
         public void Interact(GameObject initiator)
         {
             if (_done) return;

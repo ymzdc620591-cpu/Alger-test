@@ -1,3 +1,5 @@
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using Game.System;
 
@@ -36,9 +38,11 @@ namespace Game.Player
         public bool ExternalRotation { get; set; }
 
         CharacterController _cc;
+        Animator[] _animators;
         float _yVelocity;
         float _coyoteTimer;
         int   _attackIndex;
+        bool  _isAttacking;
 
         const float CoyoteTime = 0.15f;
 
@@ -47,10 +51,58 @@ namespace Game.Player
             _cc = GetComponent<CharacterController>();
             if (_cameraTransform == null && Camera.main != null)
                 _cameraTransform = Camera.main.transform;
-            if (_animator == null)
-                _animator = GetComponentInChildren<Animator>();
+            CacheAnimators();
+        }
+
+        void CacheAnimators()
+        {
+            var found = GetComponentsInChildren<Animator>(true);
+            var animators = new List<Animator>(found.Length + (_animator != null ? 1 : 0));
+
             if (_animator != null)
-                _animator.fireEvents = false;
+                animators.Add(_animator);
+
+            foreach (var animator in found)
+            {
+                if (animator == null || animators.Contains(animator))
+                    continue;
+
+                animators.Add(animator);
+            }
+
+            _animators = animators.ToArray();
+            if (_animator == null && _animators.Length > 0)
+                _animator = _animators[0];
+
+            foreach (var animator in _animators)
+                animator.fireEvents = false;
+        }
+
+        void SetAnimatorFloat(int hash, float value)
+        {
+            if (_animators == null || _animators.Length == 0)
+                return;
+
+            foreach (var animator in _animators)
+                animator.SetFloat(hash, value);
+        }
+
+        void SetAnimatorBool(int hash, bool value)
+        {
+            if (_animators == null || _animators.Length == 0)
+                return;
+
+            foreach (var animator in _animators)
+                animator.SetBool(hash, value);
+        }
+
+        void SetAnimatorTrigger(int hash)
+        {
+            if (_animators == null || _animators.Length == 0)
+                return;
+
+            foreach (var animator in _animators)
+                animator.SetTrigger(hash);
         }
 
         void Update()
@@ -62,6 +114,8 @@ namespace Game.Player
 
         void HandleMovement()
         {
+            if (_isAttacking) return;
+
             float h = Input.GetAxis("Horizontal");
             float v = Input.GetAxis("Vertical");
 
@@ -79,7 +133,7 @@ namespace Game.Player
             if (move.sqrMagnitude > 0.01f && !ExternalRotation)
                 transform.forward = Vector3.Slerp(transform.forward, move, 10f * Time.deltaTime);
 
-            _animator?.SetFloat(_hashSpeed, move.magnitude * speed * _animSpeedScale);
+            SetAnimatorFloat(_hashSpeed, move.magnitude * speed * _animSpeedScale);
         }
 
         // SphereCast 覆盖整个脚底面积，斜面/不平地形均能检测
@@ -111,20 +165,31 @@ namespace Game.Player
             {
                 _yVelocity   = Mathf.Sqrt(-2f * _gravity * _jumpHeight);
                 _coyoteTimer = 0f;
-                _animator?.SetTrigger(_hashJump);
+                SetAnimatorTrigger(_hashJump);
             }
 
-            _animator?.SetBool(_hashOnGround, grounded);
-            _animator?.SetFloat(_hashVY, _yVelocity);
+            SetAnimatorBool(_hashOnGround, grounded);
+            SetAnimatorFloat(_hashVY, _yVelocity);
 
             _cc.Move(Vector3.up * (_yVelocity * Time.deltaTime));
         }
 
         public void PlayAttack()
         {
-            if (_animator == null) return;
-            _animator.SetTrigger(_hashAttacks[_attackIndex % _hashAttacks.Length]);
+            if (_animators == null || _animators.Length == 0) return;
+            if (_isAttacking) return;
+
+            _isAttacking = true;
+            SetAnimatorTrigger(_hashAttacks[_attackIndex % _hashAttacks.Length]);
             _attackIndex++;
+
+            StartCoroutine(AttackEndRoutine());
+        }
+
+        IEnumerator AttackEndRoutine()
+        {
+            yield return new WaitForSeconds(0.5f);
+            _isAttacking = false;
         }
     }
 }

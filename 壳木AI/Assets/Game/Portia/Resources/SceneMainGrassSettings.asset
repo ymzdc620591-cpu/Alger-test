@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b98b1e7a7de544879984861438807ca6, type: 3}
+  m_Name: SceneMainGrassSettings
+  m_EditorClassIdentifier: 
+  enableGrass: 0
+  patchSize: 18
+  patchRadius: 4
+  patchDensity: 140
+  cardCount: 4
+  bladeHalfWidth: 0.085
+  bladeHeight: 0.68
+  bladeTipScale: 0.1
+  minScale: 0.72
+  maxScale: 1.02
+  tipColor: {r: 0.69, g: 0.78, b: 0.45, a: 1}
+  rootColor: {r: 0.34, g: 0.42, b: 0.2, a: 1}
+  colorScale: 0.03
+  colorOffset: 0
+  windSpeed: 0.42
+  windSize: 13
+  shaderHeight: 0.82
+  interactionRadius: 2.4
