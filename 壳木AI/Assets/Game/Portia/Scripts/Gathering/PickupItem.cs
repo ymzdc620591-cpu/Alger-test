@@ -14,6 +14,7 @@ namespace Game.Portia
         public void Interact(GameObject initiator)
         {
             InventoryManager.Instance?.Add(_gid, _count);
+            EventBus.Emit(new ItemReceivedEvent { Gid = _gid, Count = _count });
             EventBus.Emit(new InteractTargetChangedEvent { Target = null });
             Destroy(gameObject);
         }

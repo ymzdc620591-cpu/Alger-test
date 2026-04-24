@@ -10,4 +10,10 @@ namespace Game.Portia
         public int Gid;
         public int NewCount;
     }
+
+    public struct ItemReceivedEvent
+    {
+        public int Gid;
+        public int Count;
+    }
 }

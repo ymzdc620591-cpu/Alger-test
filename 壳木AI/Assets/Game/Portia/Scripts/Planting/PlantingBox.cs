@@ -109,6 +109,11 @@ namespace Game.Portia
         void Harvest()
         {
             InventoryManager.Instance?.Add(_activeCrop.outputGid, _activeCrop.outputCount);
+            EventBus.Emit(new ItemReceivedEvent
+            {
+                Gid = _activeCrop.outputGid,
+                Count = _activeCrop.outputCount
+            });
             Debug.Log($"[种植] 收获 {InventoryManager.GetItemName(_activeCrop.outputGid)} ×{_activeCrop.outputCount}");
 
             if (_badge != null) { Destroy(_badge.gameObject); _badge = null; }

@@ -96,6 +96,7 @@ namespace Game.Portia
             foreach (var d in _drops)
             {
                 InventoryManager.Instance?.Add(d.Gid, d.Count);
+                EventBus.Emit(new ItemReceivedEvent { Gid = d.Gid, Count = d.Count });
                 Debug.Log($"[采集] {gameObject.name} → {InventoryManager.GetItemName(d.Gid)} ×{d.Count}");
             }
 

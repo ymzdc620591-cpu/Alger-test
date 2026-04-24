@@ -101,6 +101,11 @@ namespace Game.Portia
         void CollectOutput()
         {
             InventoryManager.Instance?.Add(_activeRecipe.outputGid, _activeRecipe.outputCount);
+            EventBus.Emit(new ItemReceivedEvent
+            {
+                Gid = _activeRecipe.outputGid,
+                Count = _activeRecipe.outputCount
+            });
             Debug.Log($"[加工] {_machineName} → {InventoryManager.GetItemName(_activeRecipe.outputGid)} ×{_activeRecipe.outputCount}");
 
             if (_badge != null) { Destroy(_badge.gameObject); _badge = null; }
